@@ -148,13 +148,13 @@ export default function HomePage() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
           <Lock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">
             البحث غير متاح
           </h1>
-          <p className="text-gray-600">
+          <p className="text-sm sm:text-base text-gray-600 px-4">
             تم تعطيل البحث عن جدول امتحانات الطلاب من قبل المسؤول حالياً.
           </p>
-          <p className="text-sm text-gray-500 mt-4">
+          <p className="text-xs sm:text-sm text-gray-500 mt-4 px-4">
             يرجى الاتصال بالمسؤول إذا كنت بحاجة إلى الوصول.
           </p>
         </div>
@@ -164,21 +164,21 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-12 max-w-4xl">
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
+      <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-12 max-w-4xl">
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="flex justify-center mb-3 sm:mb-4">
             <Image 
               src="/img/Qassim_University_logo.png" 
               alt="Qassim University Logo" 
               width={200}
               height={80}
-              className="h-20 w-auto"
+              className="h-12 sm:h-16 md:h-20 w-auto"
             />
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
             البحث عن جدول الامتحانات
           </h1>
-          <p className="text-gray-600 mb-4">
+          <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
             أدخل رقم الطالب لعرض جدول الامتحانات
           </p>
           <div className="flex justify-center gap-4">
@@ -191,8 +191,8 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-8 no-print">
-          <form onSubmit={handleSearch} className="space-y-4">
+        <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6 sm:mb-8 no-print">
+          <form onSubmit={handleSearch} className="space-y-3 sm:space-y-4">
             <div>
               <label
                 htmlFor="studentId"
@@ -200,20 +200,20 @@ export default function HomePage() {
               >
                 رقم الطالب
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   id="studentId"
                   type="text"
                   value={studentId}
                   onChange={(e) => setStudentId(e.target.value)}
                   placeholder="أدخل رقم الطالب"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="flex-1 px-3 sm:px-4 py-2.5 sm:py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={loading}
                 />
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="w-full sm:w-auto px-6 py-2.5 sm:py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-base"
                 >
                   {loading ? (
                     <>
@@ -240,14 +240,14 @@ export default function HomePage() {
 
         {schedules.length > 0 && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-semibold text-gray-900">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900">
                 جدول الامتحانات ({schedules.length} {schedules.length === 1 ? "امتحان" : schedules.length === 2 ? "امتحانان" : "امتحانات"})
               </h2>
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <button
                   onClick={handleCopy}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center gap-2 transition-colors"
+                  className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center justify-center gap-2 transition-colors"
                   title="Copy schedule"
                 >
                   {copied ? (
@@ -264,7 +264,7 @@ export default function HomePage() {
                 </button>
                 <button
                   onClick={handlePrint}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center gap-2 transition-colors print:hidden"
+                  className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center justify-center gap-2 transition-colors print:hidden"
                   title="Print schedule"
                 >
                   <Printer className="w-4 h-4" />
@@ -275,41 +275,41 @@ export default function HomePage() {
             {schedules.map((schedule, index) => (
               <div
                 key={index}
-                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-200 animate-in fade-in slide-in-from-bottom-4"
+                className="bg-white rounded-lg shadow-md p-4 sm:p-6 hover:shadow-lg transition-all duration-200 animate-in fade-in slide-in-from-bottom-4"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                <div className="flex flex-col sm:flex-row items-start justify-between mb-4 gap-3">
+                  <div className="flex-1">
+                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1">
                       {schedule.courseName}
                     </h3>
-                    <p className="text-base font-medium text-gray-700">
-                      {schedule.courseCode} • <span className="text-lg font-semibold">الفصل {schedule.classNo}</span>
+                    <p className="text-sm sm:text-base font-medium text-gray-700">
+                      {schedule.courseCode} • <span className="text-base sm:text-lg font-semibold">الفصل {schedule.classNo}</span>
                     </p>
                   </div>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
+                  <span className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-800 text-xs sm:text-sm font-medium rounded-full whitespace-nowrap">
                     {schedule.period}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2 text-gray-700">
-                    <Calendar className="w-5 h-5 text-blue-600" />
-                    <span className="font-medium">{formatDate(schedule.examDate)}</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base">
+                    <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+                    <span className="font-medium break-words">{formatDate(schedule.examDate)}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-gray-700">
-                    <Clock className="w-5 h-5 text-blue-600" />
+                  <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base">
+                    <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
                     <span className="font-medium">
                       {schedule.startTime} - {schedule.endTime}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-gray-700 md:col-span-2">
-                    <MapPin className="w-5 h-5 text-blue-600" />
-                    <span className="font-medium">{schedule.place}</span>
+                  <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base sm:col-span-2">
+                    <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+                    <span className="font-medium break-words">{schedule.place}</span>
                   </div>
                   {schedule.rows && (
-                    <div className="flex items-center gap-2 text-gray-700 md:col-span-2">
-                      <Grid3x3 className="w-5 h-5 text-blue-600" />
+                    <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base sm:col-span-2">
+                      <Grid3x3 className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
                       <span className="font-medium">نطاق المقاعد: {schedule.rows}</span>
                     </div>
                   )}

@@ -61,19 +61,34 @@
 /* RTL Support */
 [dir="rtl"] {
   direction: rtl;
+}
+
+[dir="rtl"] body {
   text-align: right;
 }
 
-[dir="rtl"] .flex {
+/* Ensure proper RTL text alignment */
+[dir="rtl"] h1,
+[dir="rtl"] h2,
+[dir="rtl"] h3,
+[dir="rtl"] h4,
+[dir="rtl"] p,
+[dir="rtl"] span,
+[dir="rtl"] div {
+  text-align: inherit;
+}
+
+/* Fix flexbox for RTL - only reverse when needed */
+[dir="rtl"] .flex-row {
   flex-direction: row-reverse;
 }
 
-[dir="rtl"] .text-left {
+/* Input and form elements should align right in RTL */
+[dir="rtl"] input,
+[dir="rtl"] textarea,
+[dir="rtl"] select {
   text-align: right;
-}
-
-[dir="rtl"] .text-right {
-  text-align: left;
+  direction: rtl;
 }
 
 /* Print styles */
