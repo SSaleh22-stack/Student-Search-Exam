@@ -118,90 +118,93 @@ export async function POST(request: NextRequest) {
     let fileType = "table";
 
     if (uploadType === "student") {
-      // Process all exam files and combine results
+      // Process exam and enrollment files in parallel for faster processing
+      console.log(`[Upload] Processing ${examFiles.length} exam file(s) and ${enrollFiles.length} enrollment file(s) in parallel`);
+      
+      const [examResults, enrollResults] = await Promise.all([
+        // Process all exam files in parallel
+        Promise.all(
+          examFiles.map(async (examFile, i) => {
+            try {
+              const result = await parseExamSchedule(examFile, examMapping);
+              console.log(`[Upload] Exam file ${i + 1}/${examFiles.length}: ${result.validRows.length} valid rows`);
+              return result;
+            } catch (err) {
+              console.error(`[Upload] Error parsing exam file ${i + 1}:`, err);
+              throw new Error(`Failed to parse exam schedule file ${i + 1}: ${examFile.name}`);
+            }
+          })
+        ),
+        // Process all enrollment files in parallel
+        Promise.all(
+          enrollFiles.map(async (enrollFile, i) => {
+            try {
+              // Detect file structure
+              const enrollStructure = await detectFileStructure(enrollFile);
+              
+              // Use appropriate parser based on detected structure
+              let result;
+              if (enrollStructure.isBlockStructure) {
+                fileType = "block-structured";
+                result = await parseEnrollmentsFromBlocks(enrollFile);
+                console.log(`[Upload] Enrollment file ${i + 1}: Block-structured - ${result.validRows.length} enrollments`);
+              } else if (enrollStructure.isSectionStructure) {
+                fileType = "section-structured";
+                result = await parseEnrollmentsFromSections(enrollFile);
+                console.log(`[Upload] Enrollment file ${i + 1}: Section-structured - ${result.validRows.length} enrollments`);
+              } else {
+                // Regular table structure - requires mapping
+                if (!enrollMapping) {
+                  throw new Error(`Header mapping required for table-structured enrollment file ${i + 1}: ${enrollFile.name}`);
+                }
+                result = await parseEnrollments(enrollFile, enrollMapping);
+                console.log(`[Upload] Enrollment file ${i + 1}: Table-structured - ${result.validRows.length} enrollments`);
+              }
+              return result;
+            } catch (err) {
+              console.error(`[Upload] Error processing enrollment file ${i + 1}:`, err);
+              throw err instanceof Error ? err : new Error(`Failed to process enrollment file ${i + 1}: ${enrollFile.name}`);
+            }
+          })
+        ),
+      ]);
+
+      // Combine exam results
       const allExamRows: any[] = [];
       const allExamErrors: any[] = [];
-      
-      console.log(`[Upload] Processing ${examFiles.length} exam file(s)`);
-      for (let i = 0; i < examFiles.length; i++) {
-        const examFile = examFiles[i];
-        try {
-          const result = await parseExamSchedule(examFile, examMapping);
-          console.log(`[Upload] Exam file ${i + 1}/${examFiles.length}: ${result.validRows.length} valid rows, ${result.errors.length} errors`);
-          allExamRows.push(...result.validRows);
-          allExamErrors.push(...result.errors);
-        } catch (err) {
-          console.error(`[Upload] Error parsing exam file ${i + 1}:`, err);
-          return NextResponse.json(
-            {
-              error: `Failed to parse exam schedule file ${i + 1}: ${examFile.name}`,
-              details: err instanceof Error ? err.message : "Unknown error",
-            },
-            { status: 500 }
-          );
-        }
-      }
+      examResults.forEach(result => {
+        allExamRows.push(...result.validRows);
+        allExamErrors.push(...result.errors);
+      });
       
       examResult = {
         validRows: allExamRows,
         errors: allExamErrors,
       };
       console.log(`[Upload] Total exam results: ${examResult.validRows.length} valid rows, ${examResult.errors.length} errors`);
-      
-      // Process all enrollment files and combine results
+
+      // Combine enrollment results
       const allEnrollRows: any[] = [];
       const allEnrollErrors: any[] = [];
-      
-      console.log(`[Upload] Processing ${enrollFiles.length} enrollment file(s)`);
-      for (let i = 0; i < enrollFiles.length; i++) {
-        const enrollFile = enrollFiles[i];
-        
-        // Detect file structure for each enrollment file
-        let enrollStructure;
-        try {
-          enrollStructure = await detectFileStructure(enrollFile);
-        } catch (err) {
-          console.error(`[Upload] Error detecting enrollment file ${i + 1} structure:`, err);
-          return NextResponse.json(
-            {
-              error: `Failed to analyze enrollment file ${i + 1} structure: ${enrollFile.name}`,
-              details: err instanceof Error ? err.message : "Unknown error",
-            },
-            { status: 500 }
-          );
-        }
-        
-        // Use appropriate parser based on detected structure
-        let result;
-        if (enrollStructure.isBlockStructure) {
-          fileType = "block-structured";
-          result = await parseEnrollmentsFromBlocks(enrollFile);
-          console.log(`[Upload] Enrollment file ${i + 1}: Block-structured - ${enrollStructure.blockCount} blocks, ${result.validRows.length} enrollments`);
-        } else if (enrollStructure.isSectionStructure) {
-          fileType = "section-structured";
-          result = await parseEnrollmentsFromSections(enrollFile);
-          console.log(`[Upload] Enrollment file ${i + 1}: Section-structured - ${result.validRows.length} enrollments`);
-        } else {
-          // Regular table structure - requires mapping
-          if (!enrollMapping) {
-            return NextResponse.json(
-              { error: `Header mapping required for table-structured enrollment file ${i + 1}: ${enrollFile.name}` },
-              { status: 400 }
-            );
-          }
-          result = await parseEnrollments(enrollFile, enrollMapping);
-          console.log(`[Upload] Enrollment file ${i + 1}: Table-structured - ${result.validRows.length} enrollments`);
-        }
-        
+      enrollResults.forEach(result => {
         allEnrollRows.push(...result.validRows);
         allEnrollErrors.push(...result.errors);
-      }
+      });
       
       enrollResult = {
         validRows: allEnrollRows,
         errors: allEnrollErrors,
       };
       console.log(`[Upload] Total enrollment results: ${enrollResult.validRows.length} valid rows, ${enrollResult.errors.length} errors`);
+
+      // Warn if too many rows (may cause timeout)
+      const MAX_RECOMMENDED_ROWS = 10000;
+      if (enrollResult.validRows.length > MAX_RECOMMENDED_ROWS) {
+        console.warn(`[Upload] WARNING: Large enrollment file detected (${enrollResult.validRows.length} rows). Processing may take longer.`);
+      }
+      if (examResult.validRows.length > MAX_RECOMMENDED_ROWS) {
+        console.warn(`[Upload] WARNING: Large exam file detected (${examResult.validRows.length} rows). Processing may take longer.`);
+      }
 
       // Check for critical errors - but allow some errors if we have valid rows
       const hasValidExams = examResult.validRows.length > 0;
@@ -317,8 +320,63 @@ export async function POST(request: NextRequest) {
     let enrollInserted = 0;
     let failed = 0;
 
-    // Insert exam schedules (only for student upload type)
+    // Process student upload type
     if (uploadType === "student") {
+      // Insert enrollments FIRST (usually the largest dataset, process early to avoid timeout)
+      console.log(`[Upload] Processing ${enrollResult.validRows.length} enrollments FIRST (largest dataset)`);
+      const ENROLL_BATCH_SIZE = 1000; // Very large batch size for maximum speed
+      const enrollmentsToInsert = enrollResult.validRows.map(enroll => ({
+        datasetId: dataset.id,
+        studentId: String(enroll.studentId).trim(),
+        courseCode: String(enroll.courseCode).trim(),
+        classNo: String(enroll.classNo).trim(),
+      }));
+
+      // Process in large batches - let database handle duplicates
+      for (let i = 0; i < enrollmentsToInsert.length; i += ENROLL_BATCH_SIZE) {
+        const batch = enrollmentsToInsert.slice(i, i + ENROLL_BATCH_SIZE);
+        try {
+          // Use createMany with skipDuplicates - fastest method
+          const result = await prisma.enrollment.createMany({
+            data: batch,
+            skipDuplicates: true,
+          });
+          enrollInserted += result.count;
+        } catch (err) {
+          console.error(`[Upload] Error inserting enrollment batch ${Math.floor(i / ENROLL_BATCH_SIZE) + 1}:`, err);
+          // If large batch fails, try medium batches
+          const MEDIUM_BATCH = 500;
+          for (let j = 0; j < batch.length; j += MEDIUM_BATCH) {
+            const mediumBatch = batch.slice(j, j + MEDIUM_BATCH);
+            try {
+              const result = await prisma.enrollment.createMany({
+                data: mediumBatch,
+                skipDuplicates: true,
+              });
+              enrollInserted += result.count;
+            } catch (e) {
+              // If medium batch fails, try small batches
+              const SMALL_BATCH = 100;
+              for (let k = 0; k < mediumBatch.length; k += SMALL_BATCH) {
+                const smallBatch = mediumBatch.slice(k, k + SMALL_BATCH);
+                try {
+                  const result = await prisma.enrollment.createMany({
+                    data: smallBatch,
+                    skipDuplicates: true,
+                  });
+                  enrollInserted += result.count;
+                } catch (smallErr) {
+                  console.error("Error inserting small enrollment batch:", smallErr);
+                  failed += smallBatch.length;
+                }
+              }
+            }
+          }
+        }
+      }
+      console.log(`[Upload] Enrollment insertion complete: ${enrollInserted} inserted, ${failed} failed`);
+
+      // Insert exam schedules (after enrollments)
       console.log(`[Upload] Starting to insert ${examResult.validRows.length} exams into dataset ${dataset.id}`);
       
       // Validate and prepare exam data in batch
@@ -361,50 +419,45 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Batch process exams in parallel (smaller batches to avoid timeout)
-      console.log(`[Upload] Processing ${validExams.length} valid exams in batches of 50`);
-      const BATCH_SIZE = 50;
+      // Batch process exams in larger parallel batches for speed
+      console.log(`[Upload] Processing ${validExams.length} valid exams in batches of 100`);
+      const BATCH_SIZE = 100; // Increased batch size
       for (let i = 0; i < validExams.length; i += BATCH_SIZE) {
         const batch = validExams.slice(i, i + BATCH_SIZE);
+        // Process batch in parallel
         await Promise.all(
           batch.map(async (exam) => {
             try {
-              const existing = await prisma.courseExam.findUnique({
-                where: {
-                  datasetId_courseCode_classNo_examDate_period: {
-                    datasetId: exam.datasetId,
-                    courseCode: exam.courseCode,
-                    classNo: exam.classNo,
-                    examDate: exam.examDate,
-                    period: exam.period,
-                  },
-                },
-              });
-
-              if (existing) {
-                await prisma.courseExam.update({
-                  where: {
-                    datasetId_courseCode_classNo_examDate_period: {
-                      datasetId: exam.datasetId,
-                      courseCode: exam.courseCode,
-                      classNo: exam.classNo,
-                      examDate: exam.examDate,
-                      period: exam.period,
-                    },
-                  },
-                  data: {
-                    courseName: exam.courseName,
-                    startTime: exam.startTime,
-                    endTime: exam.endTime,
-                    place: exam.place,
-                    rows: exam.rows,
-                    seats: exam.seats,
-                  },
-                });
-                examUpdated++;
-              } else {
+              // Try to create first (faster for new records)
+              try {
                 await prisma.courseExam.create({ data: exam });
                 examInserted++;
+              } catch (createErr: any) {
+                // If unique constraint violation, update instead
+                if (createErr?.code === 'P2002') {
+                  await prisma.courseExam.update({
+                    where: {
+                      datasetId_courseCode_classNo_examDate_period: {
+                        datasetId: exam.datasetId,
+                        courseCode: exam.courseCode,
+                        classNo: exam.classNo,
+                        examDate: exam.examDate,
+                        period: exam.period,
+                      },
+                    },
+                    data: {
+                      courseName: exam.courseName,
+                      startTime: exam.startTime,
+                      endTime: exam.endTime,
+                      place: exam.place,
+                      rows: exam.rows,
+                      seats: exam.seats,
+                    },
+                  });
+                  examUpdated++;
+                } else {
+                  throw createErr;
+                }
               }
             } catch (err) {
               console.error(`[Upload] Error processing exam:`, err);
@@ -414,50 +467,6 @@ export async function POST(request: NextRequest) {
         );
       }
       console.log(`[Upload] Exam insertion complete: ${examInserted} inserted, ${examUpdated} updated, ${failed} failed`);
-
-      // Insert enrollments in larger batches for better performance
-      console.log(`[Upload] Processing ${enrollResult.validRows.length} enrollments in batches`);
-      const ENROLL_BATCH_SIZE = 500; // Increased batch size for faster processing
-      const enrollmentsToInsert = enrollResult.validRows.map(enroll => ({
-        datasetId: dataset.id,
-        studentId: enroll.studentId.trim(),
-        courseCode: enroll.courseCode.trim(),
-        classNo: enroll.classNo.trim(),
-      }));
-
-      // Remove duplicates before inserting (faster than skipDuplicates for large datasets)
-      const uniqueEnrollments = Array.from(
-        new Map(enrollmentsToInsert.map(e => [`${e.datasetId}-${e.studentId}-${e.courseCode}-${e.classNo}`, e])).values()
-      );
-
-      for (let i = 0; i < uniqueEnrollments.length; i += ENROLL_BATCH_SIZE) {
-        const batch = uniqueEnrollments.slice(i, i + ENROLL_BATCH_SIZE);
-        try {
-          // Use createMany with skipDuplicates for maximum performance
-          const result = await prisma.enrollment.createMany({
-            data: batch,
-            skipDuplicates: true,
-          });
-          enrollInserted += result.count;
-        } catch (err) {
-          console.error("Error inserting enrollment batch:", err);
-          // If batch fails, try smaller batches
-          const SMALL_BATCH = 100;
-          for (let j = 0; j < batch.length; j += SMALL_BATCH) {
-            const smallBatch = batch.slice(j, j + SMALL_BATCH);
-            try {
-              const result = await prisma.enrollment.createMany({
-                data: smallBatch,
-                skipDuplicates: true,
-              });
-              enrollInserted += result.count;
-            } catch (e) {
-              console.error("Error inserting small enrollment batch:", e);
-              failed += smallBatch.length;
-            }
-          }
-        }
-      }
     }
 
     // Insert lecturer exams (only for lecturer upload type)
