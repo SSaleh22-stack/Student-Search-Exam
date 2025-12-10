@@ -159,16 +159,16 @@ export default function AdminUploadPage() {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update settings");
+        throw new Error("فشل تحديث الإعدادات");
       }
 
       const data = await res.json();
       setStudentSearchActive(data.studentSearchActive);
       setLecturerSearchActive(data.lecturerSearchActive);
-      setSuccess(`${type === "student" ? "Student" : "Lecturer"} search page ${isActive ? "activated" : "deactivated"} successfully`);
+      setSuccess(`تم ${isActive ? "تفعيل" : "إلغاء تفعيل"} صفحة البحث ${type === "student" ? "للطلاب" : "للمحاضرين"} بنجاح`);
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update settings");
+      setError(err instanceof Error ? err.message : "فشل تحديث الإعدادات");
     } finally {
       setLoadingSettings(false);
     }
@@ -235,15 +235,15 @@ export default function AdminUploadPage() {
 
       const failed = results.filter(r => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok));
       if (failed.length > 0) {
-        throw new Error(`${failed.length} dataset(s) failed to activate`);
+        throw new Error(`فشل تفعيل ${failed.length} مجموعة بيانات`);
       }
 
-      setSuccess(`${selectedDatasets.size} dataset(s) activated successfully`);
+      setSuccess(`تم تفعيل ${selectedDatasets.size} مجموعة بيانات بنجاح`);
       setSelectedDatasets(new Set());
       loadDatasets();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to activate datasets");
+      setError(err instanceof Error ? err.message : "فشل تفعيل مجموعات البيانات");
     } finally {
       setLoading(false);
     }
@@ -800,7 +800,7 @@ No header mapping needed.`);
               height={48}
               className="h-12 w-auto"
             />
-            <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
+            <h1 className="text-3xl font-bold text-gray-900">لوحة التحكم</h1>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -815,7 +815,7 @@ No header mapping needed.`);
               className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center gap-2"
             >
               <LogOut className="w-4 h-4" />
-              Logout
+              تسجيل الخروج
             </button>
           </div>
         </div>
@@ -837,14 +837,14 @@ No header mapping needed.`);
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Upload className="w-5 h-5" />
-              Upload New Dataset
+              رفع مجموعة بيانات جديدة
             </h2>
 
             <form onSubmit={handleUpload} className="space-y-4">
               {/* Upload Type Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  What would you like to upload?
+                  ماذا تريد رفعه؟
                 </label>
                 <div className="grid grid-cols-2 gap-4">
                   <button
@@ -872,9 +872,9 @@ No header mapping needed.`);
                   >
                     <div className="flex items-center gap-2 justify-center">
                       <Users className="w-5 h-5" />
-                      <span className="font-medium">Student Data</span>
+                      <span className="font-medium">بيانات الطلاب</span>
                     </div>
-                    <p className="text-xs mt-1 text-gray-600">Exam schedules & enrollments</p>
+                    <p className="text-xs mt-1 text-gray-600">جداول الامتحانات والتسجيلات</p>
                   </button>
                   <button
                     type="button"
@@ -901,9 +901,9 @@ No header mapping needed.`);
                   >
                     <div className="flex items-center gap-2 justify-center">
                       <User className="w-5 h-5" />
-                      <span className="font-medium">Lecturer Data</span>
+                      <span className="font-medium">بيانات المحاضرين</span>
                     </div>
-                    <p className="text-xs mt-1 text-gray-600">Lecturer exam schedules</p>
+                    <p className="text-xs mt-1 text-gray-600">جداول امتحانات المحاضرين</p>
                   </button>
                 </div>
               </div>
@@ -912,7 +912,7 @@ No header mapping needed.`);
                 <>
                   <div>
                     <label htmlFor="datasetName" className="block text-sm font-medium text-gray-700 mb-2">
-                      Dataset Name (e.g., &quot;Term 1 2025&quot;)
+                      اسم مجموعة البيانات (مثال: &quot;الفصل الأول 2025&quot;)
                     </label>
                     <input
                       id="datasetName"
@@ -921,7 +921,7 @@ No header mapping needed.`);
                       value={datasetName}
                       onChange={(e) => setDatasetName(e.target.value)}
                       required
-                      placeholder="Term 1 2025"
+                      placeholder="الفصل الأول 2025"
                       className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     />
                   </div>
@@ -931,7 +931,7 @@ No header mapping needed.`);
                     <>
                       <div>
                         <label htmlFor="examFile" className="block text-sm font-medium text-gray-700 mb-2">
-                          Exam Schedule Files (Excel) - Multiple files allowed
+                          ملفات جدول الامتحانات (Excel) - يُسمح بملفات متعددة
                         </label>
                         <input
                           id="examFile"
@@ -945,7 +945,7 @@ No header mapping needed.`);
                         />
                         {examFiles.length > 0 && (
                           <div className="mt-2 text-sm text-gray-600">
-                            <span className="font-medium">{examFiles.length} file(s) selected:</span>
+                            <span className="font-medium">تم اختيار {examFiles.length} ملف:</span>
                             <ul className="list-disc list-inside mt-1">
                               {examFiles.map((file, idx) => (
                                 <li key={idx}>{file.name}</li>
@@ -957,7 +957,7 @@ No header mapping needed.`);
 
                       <div>
                         <label htmlFor="enrollFile" className="block text-sm font-medium text-gray-700 mb-2">
-                          Student Enrollments Files (Excel) - Multiple files allowed
+                          ملفات تسجيلات الطلاب (Excel) - يُسمح بملفات متعددة
                         </label>
                         <input
                           id="enrollFile"
@@ -971,7 +971,7 @@ No header mapping needed.`);
                         />
                         {enrollFiles.length > 0 && (
                           <div className="mt-2 text-sm text-gray-600">
-                            <span className="font-medium">{enrollFiles.length} file(s) selected:</span>
+                            <span className="font-medium">تم اختيار {enrollFiles.length} ملف:</span>
                             <ul className="list-disc list-inside mt-1">
                               {enrollFiles.map((file, idx) => (
                                 <li key={idx}>{file.name}</li>
@@ -987,7 +987,7 @@ No header mapping needed.`);
                           <div className="flex items-center gap-2">
                             <CheckCircle className="w-4 h-4" />
                             <span className="text-sm font-medium">
-                              Exam Schedule File: All headers auto-detected successfully! No manual mapping needed.
+                              ملف جدول الامتحانات: تم اكتشاف جميع العناوين تلقائياً بنجاح! لا حاجة للتعيين اليدوي.
                             </span>
                           </div>
                           <button
@@ -1000,7 +1000,7 @@ No header mapping needed.`);
                             }}
                             className="mt-2 text-xs text-green-700 hover:text-green-900 underline"
                           >
-                            Click to manually adjust headers
+                            اضغط لتعديل العناوين يدوياً
                           </button>
                         </div>
                       )}
@@ -1011,7 +1011,7 @@ No header mapping needed.`);
                   {uploadType === "lecturer" && (
                     <div>
                       <label htmlFor="lecturerFile" className="block text-sm font-medium text-gray-700 mb-2">
-                        Lecturer Schedule Files (Excel) - Multiple files allowed
+                        ملفات جدول المحاضرين (Excel) - يُسمح بملفات متعددة
                       </label>
                       <input
                         id="lecturerFile"
@@ -1025,7 +1025,7 @@ No header mapping needed.`);
                       />
                       {lecturerFiles.length > 0 && (
                         <div className="mt-2 text-sm text-gray-600">
-                          <span className="font-medium">{lecturerFiles.length} file(s) selected:</span>
+                          <span className="font-medium">تم اختيار {lecturerFiles.length} ملف:</span>
                           <ul className="list-disc list-inside mt-1">
                             {lecturerFiles.map((file, idx) => (
                               <li key={idx}>{file.name}</li>
@@ -1044,21 +1044,21 @@ No header mapping needed.`);
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                       <Settings className="w-4 h-4" />
-                      Map Excel Headers to Fields
+                      ربط عناوين Excel بالحقول
                     </div>
                     <span className="text-xs text-gray-500 italic">
-                      ✓ Auto-detected • You can edit below
+                      ✓ تم الاكتشاف تلقائياً • يمكنك التعديل أدناه
                     </span>
                   </div>
                   <p className="text-xs text-gray-600 bg-yellow-50 border border-yellow-200 rounded p-2">
-                    <strong>Note:</strong> Headers have been auto-detected. You can change any mapping by selecting a different header from the dropdown menus below.
+                    <strong>ملاحظة:</strong> تم اكتشاف العناوين تلقائياً. يمكنك تغيير أي ربط عن طريق اختيار عنوان مختلف من القوائم المنسدلة أدناه.
                   </p>
 
                   {/* Exam Schedule Mapping */}
                   {examHeaders.length > 0 && (
                     <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-sm font-medium text-gray-900">Exam Schedule File</h4>
+                        <h4 className="text-sm font-medium text-gray-900">ملف جدول الامتحانات</h4>
                         <button
                           type="button"
                           onClick={() => {
@@ -1087,7 +1087,7 @@ No header mapping needed.`);
                               required
                               disabled={uploading || readingHeaders}
                             >
-                              <option value="">Select header...</option>
+                              <option value="">اختر العنوان...</option>
                               {examHeaders.map((header) => (
                                 <option key={header} value={header}>
                                   {header}
@@ -1099,7 +1099,7 @@ No header mapping needed.`);
                         {/* end_time is optional */}
                         <div className="flex items-center gap-2">
                           <label className="text-xs text-gray-600 w-28 capitalize">
-                            end time (optional):
+                            وقت الانتهاء (اختياري):
                           </label>
                           <select
                             value={examMapping["end_time"] || ""}
@@ -1107,7 +1107,7 @@ No header mapping needed.`);
                             className="flex-1 text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white hover:border-blue-400 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                             disabled={uploading || readingHeaders}
                           >
-                            <option value="">Select header (optional)...</option>
+                            <option value="">اختر العنوان (اختياري)...</option>
                             {examHeaders.map((header) => (
                               <option key={header} value={header}>
                                 {header}
@@ -1126,7 +1126,7 @@ No header mapping needed.`);
                               className="flex-1 text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white hover:border-blue-400 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                               disabled={uploading || readingHeaders}
                             >
-                              <option value="">Select header (optional)...</option>
+                              <option value="">اختر العنوان (اختياري)...</option>
                               {examHeaders.map((header) => (
                                 <option key={header} value={header}>
                                   {header}
@@ -1171,7 +1171,7 @@ No header mapping needed.`);
                               required
                               disabled={uploading || readingHeaders}
                             >
-                              <option value="">Select header...</option>
+                              <option value="">اختر العنوان...</option>
                               {lecturerHeaders.map((header) => (
                                 <option key={header} value={header}>
                                   {header}
@@ -1191,7 +1191,7 @@ No header mapping needed.`);
                               className="flex-1 text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white hover:border-purple-400 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                               disabled={uploading || readingHeaders}
                             >
-                              <option value="">Select header (optional)...</option>
+                              <option value="">اختر العنوان (اختياري)...</option>
                               {lecturerHeaders.map((header) => (
                                 <option key={header} value={header}>
                                   {header}
@@ -1208,7 +1208,7 @@ No header mapping needed.`);
                   {enrollHeaders.length > 0 && (
                     <div className="bg-green-50 p-3 rounded-md border border-green-200">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-sm font-medium text-gray-900">Enrollments File</h4>
+                        <h4 className="text-sm font-medium text-gray-900">ملف التسجيلات</h4>
                         <button
                           type="button"
                           onClick={() => {
@@ -1237,7 +1237,7 @@ No header mapping needed.`);
                               required
                               disabled={uploading || readingHeaders}
                             >
-                              <option value="">Select header...</option>
+                              <option value="">اختر العنوان...</option>
                               {enrollHeaders.map((header) => (
                                 <option key={header} value={header}>
                                   {header}
@@ -1260,12 +1260,12 @@ No header mapping needed.`);
                 {uploading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Uploading...
+                    جاري الرفع...
                   </>
                 ) : (
                   <>
                     <Upload className="w-4 h-4" />
-                    Upload Dataset
+                    رفع مجموعة البيانات
                   </>
                 )}
               </button>
@@ -1277,7 +1277,7 @@ No header mapping needed.`);
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                 <FileSpreadsheet className="w-5 h-5" />
-                Datasets
+                مجموعات البيانات
               </h2>
               <div className="flex items-center gap-2">
                 {datasets.length > 0 && (
@@ -1292,7 +1292,7 @@ No header mapping needed.`);
                       ) : (
                         <Square className="w-4 h-4" />
                       )}
-                      {selectedDatasets.size === datasets.length ? "Deselect All" : "Select All"}
+                      {selectedDatasets.size === datasets.length ? "إلغاء تحديد الكل" : "تحديد الكل"}
                     </button>
                     {selectedDatasets.size > 0 && (
                       <>
@@ -1301,14 +1301,14 @@ No header mapping needed.`);
                           disabled={loading}
                           className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50"
                         >
-                          Activate Selected ({selectedDatasets.size})
+                          تفعيل المحدد ({selectedDatasets.size})
                         </button>
                         <button
                           onClick={handleBulkDeactivate}
                           disabled={loading}
                           className="px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 disabled:opacity-50"
                         >
-                          Deactivate Selected ({selectedDatasets.size})
+                          إلغاء تفعيل المحدد ({selectedDatasets.size})
                         </button>
                         <button
                           onClick={handleBulkDelete}
@@ -1316,7 +1316,7 @@ No header mapping needed.`);
                           className="px-3 py-1 bg-red-800 text-white text-sm rounded-md hover:bg-red-900 disabled:opacity-50 flex items-center gap-1"
                         >
                           <Trash2 className="w-4 h-4" />
-                          Delete Selected ({selectedDatasets.size})
+                          حذف المحدد ({selectedDatasets.size})
                         </button>
                       </>
                 )}
@@ -1337,7 +1337,7 @@ No header mapping needed.`);
                 <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
               </div>
             ) : datasets.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No datasets yet</p>
+              <p className="text-gray-500 text-center py-8">لا توجد مجموعات بيانات بعد</p>
             ) : (
               <div className="space-y-2">
                 {datasets.map((dataset) => {
@@ -1367,12 +1367,12 @@ No header mapping needed.`);
                                 {dataset.isActive && (
                                   <span className="inline-flex items-center gap-1 text-sm text-green-700">
                                     <CheckCircle className="w-4 h-4" />
-                                    Active
+                                    نشط
                                   </span>
                                 )}
                               </div>
                               <p className="text-sm text-gray-500 mt-1">
-                                Created: {new Date(dataset.createdAt).toLocaleDateString()}
+                                تم الإنشاء: {new Date(dataset.createdAt).toLocaleDateString()}
                               </p>
                             </div>
                           </div>
@@ -1391,12 +1391,12 @@ No header mapping needed.`);
                                   {isExpanded ? (
                                     <>
                                       <ChevronUp className="w-4 h-4" />
-                                      Hide
+                                      إخفاء
                                     </>
                                   ) : (
                                     <>
                                       <ChevronDown className="w-4 h-4" />
-                                      Details
+                                      التفاصيل
                                     </>
                                   )}
                                 </>
@@ -1409,7 +1409,7 @@ No header mapping needed.`);
                               title="Delete dataset"
                             >
                               <Trash2 className="w-4 h-4" />
-                              Delete
+                              حذف
                             </button>
                           </div>
                         </div>

@@ -39,12 +39,12 @@ export default function AdminLoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Login failed");
+        throw new Error(data.error || "فشل تسجيل الدخول");
       }
 
       router.push("/admin/upload");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : "فشل تسجيل الدخول");
     } finally {
       setLoading(false);
     }
@@ -57,14 +57,14 @@ export default function AdminLoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
             <Lock className="w-8 h-8 text-blue-600" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Admin Login</h1>
-          <p className="text-gray-600 mt-2">Enter your credentials to access the admin panel</p>
+          <h1 className="text-2xl font-bold text-gray-900">تسجيل دخول المسؤول</h1>
+          <p className="text-gray-600 mt-2">أدخل بيانات الاعتماد للوصول إلى لوحة التحكم</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-              Username
+              اسم المستخدم
             </label>
             <input
               id="username"
@@ -79,7 +79,7 @@ export default function AdminLoginPage() {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Password
+              كلمة المرور
             </label>
             <input
               id="password"
@@ -106,10 +106,10 @@ export default function AdminLoginPage() {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Logging in...
+                جاري تسجيل الدخول...
               </>
             ) : (
-              "Login"
+              "تسجيل الدخول"
             )}
           </button>
         </form>

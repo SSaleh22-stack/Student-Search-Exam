@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Exam Schedule Lookup",
-  description: "Look up your exam schedule by student ID",
+  title: "البحث عن جدول الامتحانات",
+  description: "ابحث عن جدول امتحاناتك باستخدام رقم الطالب",
 };
 
 export default function RootLayout({
@@ -15,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="ar" dir="rtl">
       <body className={inter.className}>{children}</body>
     </html>
   );

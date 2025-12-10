@@ -45,7 +45,7 @@ export default function LecturerPage() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lecturerName.trim()) {
-      setError("Please enter a lecturer name");
+      setError("الرجاء إدخال اسم المحاضر");
       return;
     }
 
@@ -58,15 +58,15 @@ export default function LecturerPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch schedule");
+        throw new Error(data.error || "فشل في جلب الجدول");
       }
 
       setExams(data.exams || []);
       if (data.exams && data.exams.length === 0) {
-        setError("No exam schedule found for this lecturer name");
+        setError("لم يتم العثور على جدول امتحانات لهذا الاسم");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : "حدث خطأ");
       setExams([]);
     } finally {
       setLoading(false);
@@ -98,7 +98,7 @@ export default function LecturerPage() {
     const text = exams
       .map(
         (e) =>
-          `${e.courseName} (${e.courseCode}) - Section ${e.section} - ${formatDate(e.examDate)} ${e.periodStart} at ${e.room}`
+          `${e.courseName} (${e.courseCode}) - الشعبة ${e.section} - ${formatDate(e.examDate)} ${e.periodStart} في ${e.room}`
       )
       .join("\n");
     
@@ -117,7 +117,7 @@ export default function LecturerPage() {
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-purple-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">جاري التحميل...</p>
         </div>
       </div>
     );
@@ -130,13 +130,13 @@ export default function LecturerPage() {
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
           <Lock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Lecturer Search Unavailable
+            البحث غير متاح
           </h1>
           <p className="text-gray-600">
-            The lecturer exam schedule search is currently deactivated by the administrator.
+            تم تعطيل البحث عن جدول امتحانات المحاضرين من قبل المسؤول حالياً.
           </p>
           <p className="text-sm text-gray-500 mt-4">
-            Please contact the administrator if you need access.
+            يرجى الاتصال بالمسؤول إذا كنت بحاجة إلى الوصول.
           </p>
         </div>
       </div>
@@ -157,17 +157,17 @@ export default function LecturerPage() {
             />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Lecturer Exam Schedule
+            جدول امتحانات المحاضرين
           </h1>
           <p className="text-gray-600 mb-4">
-            Enter your name to view your exam schedule
+            أدخل اسمك لعرض جدول الامتحانات
           </p>
           <div className="flex justify-center gap-4">
             <a
               href="/"
               className="text-sm text-blue-600 hover:text-blue-800 underline"
             >
-              Student search
+              بحث الطلاب
             </a>
           </div>
         </div>
@@ -179,7 +179,7 @@ export default function LecturerPage() {
                 htmlFor="lecturerName"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Lecturer Name
+                اسم المحاضر
               </label>
               <div className="flex gap-2">
                 <input
@@ -187,7 +187,7 @@ export default function LecturerPage() {
                   type="text"
                   value={lecturerName}
                   onChange={(e) => setLecturerName(e.target.value)}
-                  placeholder="Enter your name"
+                  placeholder="أدخل اسمك"
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   disabled={loading}
                 />
@@ -199,12 +199,12 @@ export default function LecturerPage() {
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Searching...
+                      جاري البحث...
                     </>
                   ) : (
                     <>
                       <Search className="w-4 h-4" />
-                      Search
+                      بحث
                     </>
                   )}
                 </button>
@@ -223,7 +223,7 @@ export default function LecturerPage() {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-semibold text-gray-900">
-                Exam Schedule ({exams.length} exam{exams.length !== 1 ? "s" : ""})
+                جدول الامتحانات ({exams.length} {exams.length === 1 ? "امتحان" : exams.length === 2 ? "امتحانان" : "امتحانات"})
               </h2>
               <div className="flex gap-2">
                 <button
@@ -234,12 +234,12 @@ export default function LecturerPage() {
                   {copied ? (
                     <>
                       <Check className="w-4 h-4" />
-                      Copied!
+                      تم النسخ!
                     </>
                   ) : (
                     <>
                       <Copy className="w-4 h-4" />
-                      Copy
+                      نسخ
                     </>
                   )}
                 </button>
@@ -249,7 +249,7 @@ export default function LecturerPage() {
                   title="Print schedule"
                 >
                   <Printer className="w-4 h-4" />
-                  Print
+                  طباعة
                 </button>
               </div>
             </div>
@@ -263,7 +263,7 @@ export default function LecturerPage() {
                 <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-4 mb-4 border border-purple-200">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-medium text-purple-600 mb-1">Lecturer</p>
+                      <p className="text-xs font-medium text-purple-600 mb-1">المحاضر</p>
                       <h3 className="text-lg font-bold text-gray-900">
                         {exam.lecturerName}
                       </h3>
@@ -271,13 +271,13 @@ export default function LecturerPage() {
                     <div className="text-right">
                       {exam.role && (
                         <div className="mb-1">
-                          <p className="text-xs font-medium text-purple-600">Role</p>
+                          <p className="text-xs font-medium text-purple-600">الدور</p>
                           <p className="text-sm font-semibold text-gray-700">{exam.role}</p>
                         </div>
                       )}
                       {exam.grade && (
                         <div>
-                          <p className="text-xs font-medium text-purple-600">Grade</p>
+                          <p className="text-xs font-medium text-purple-600">الدرجة</p>
                           <p className="text-sm font-semibold text-gray-700">{exam.grade}</p>
                         </div>
                       )}
@@ -291,11 +291,11 @@ export default function LecturerPage() {
                       {exam.courseName}
                     </h3>
                     <p className="text-base font-medium text-gray-700">
-                      {exam.courseCode} • <span className="text-lg font-semibold">Section {exam.section}</span>
+                      {exam.courseCode} • <span className="text-lg font-semibold">الشعبة {exam.section}</span>
                     </p>
                     {exam.examCode && (
                       <p className="text-sm text-gray-600 mt-1">
-                        Exam Code: {exam.examCode}
+                        رمز الامتحان: {exam.examCode}
                       </p>
                     )}
                   </div>
@@ -323,18 +323,18 @@ export default function LecturerPage() {
                   {exam.column && (
                     <div className="flex items-center gap-2 text-gray-700 md:col-span-2">
                       <Grid3x3 className="w-5 h-5 text-purple-600" />
-                      <span className="font-medium">Column Range: {exam.column}</span>
+                      <span className="font-medium">نطاق الأعمدة: {exam.column}</span>
                     </div>
                   )}
                   {exam.numberOfStudents && (
                     <div className="flex items-center gap-2 text-gray-700 md:col-span-2">
                       <User className="w-5 h-5 text-purple-600" />
-                      <span className="font-medium">{exam.numberOfStudents} students</span>
+                      <span className="font-medium">{exam.numberOfStudents} طالب</span>
                     </div>
                   )}
                   {exam.invigilator && (
                     <div className="flex items-center gap-2 text-gray-700 md:col-span-2">
-                      <span className="text-sm text-gray-500">Invigilator:</span>
+                      <span className="text-sm text-gray-500">مراقب:</span>
                       <span className="font-medium">{exam.invigilator}</span>
                     </div>
                   )}
@@ -366,7 +366,7 @@ export default function LecturerPage() {
         {!loading && exams.length === 0 && !error && (
           <div className="text-center py-12 text-gray-500">
             <BookOpen className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <p>Enter your name above to view your exam schedule</p>
+            <p>أدخل اسمك أعلاه لعرض جدول الامتحانات</p>
           </div>
         )}
       </div>

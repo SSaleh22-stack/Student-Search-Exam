@@ -41,7 +41,7 @@ export default function HomePage() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentId.trim()) {
-      setError("Please enter a student ID");
+      setError("الرجاء إدخال رقم الطالب");
       return;
     }
 
@@ -54,15 +54,15 @@ export default function HomePage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch schedule");
+        throw new Error(data.error || "فشل في جلب الجدول");
       }
 
       setSchedules(data.schedules || []);
       if (data.schedules && data.schedules.length === 0) {
-        setError("No exam schedule found for this student ID");
+        setError("لم يتم العثور على جدول امتحانات لهذا الرقم");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : "حدث خطأ");
       setSchedules([]);
     } finally {
       setLoading(false);
@@ -117,7 +117,7 @@ export default function HomePage() {
     const text = schedules
       .map(
         (s) =>
-          `${s.courseName} (${s.courseCode}) - ${formatDate(s.examDate)} ${s.startTime}-${s.endTime} at ${s.place}`
+          `${s.courseName} (${s.courseCode}) - ${formatDate(s.examDate)} ${s.startTime}-${s.endTime} في ${s.place}`
       )
       .join("\n");
     
@@ -136,7 +136,7 @@ export default function HomePage() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">جاري التحميل...</p>
         </div>
       </div>
     );
@@ -149,13 +149,13 @@ export default function HomePage() {
         <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
           <Lock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Student Search Unavailable
+            البحث غير متاح
           </h1>
           <p className="text-gray-600">
-            The student exam schedule search is currently deactivated by the administrator.
+            تم تعطيل البحث عن جدول امتحانات الطلاب من قبل المسؤول حالياً.
           </p>
           <p className="text-sm text-gray-500 mt-4">
-            Please contact the administrator if you need access.
+            يرجى الاتصال بالمسؤول إذا كنت بحاجة إلى الوصول.
           </p>
         </div>
       </div>
@@ -176,17 +176,17 @@ export default function HomePage() {
             />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Exam Schedule Lookup
+            البحث عن جدول الامتحانات
           </h1>
           <p className="text-gray-600 mb-4">
-            Enter your student ID to view your exam schedule
+            أدخل رقم الطالب لعرض جدول الامتحانات
           </p>
           <div className="flex justify-center gap-4">
             <a
               href="/lecturer"
               className="text-sm text-purple-600 hover:text-purple-800 underline"
             >
-              Are you a lecturer? Click here to search by name
+              هل أنت محاضر؟ اضغط هنا للبحث بالاسم
             </a>
           </div>
         </div>
@@ -198,7 +198,7 @@ export default function HomePage() {
                 htmlFor="studentId"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                Student ID
+                رقم الطالب
               </label>
               <div className="flex gap-2">
                 <input
@@ -206,7 +206,7 @@ export default function HomePage() {
                   type="text"
                   value={studentId}
                   onChange={(e) => setStudentId(e.target.value)}
-                  placeholder="Enter your student ID"
+                  placeholder="أدخل رقم الطالب"
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={loading}
                 />
@@ -218,12 +218,12 @@ export default function HomePage() {
                   {loading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Searching...
+                      جاري البحث...
                     </>
                   ) : (
                     <>
                       <Search className="w-4 h-4" />
-                      Search
+                      بحث
                     </>
                   )}
                 </button>
@@ -242,7 +242,7 @@ export default function HomePage() {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-semibold text-gray-900">
-                Your Exam Schedule ({schedules.length} exam{schedules.length !== 1 ? "s" : ""})
+                جدول الامتحانات ({schedules.length} {schedules.length === 1 ? "امتحان" : schedules.length === 2 ? "امتحانان" : "امتحانات"})
               </h2>
               <div className="flex gap-2">
                 <button
@@ -253,12 +253,12 @@ export default function HomePage() {
                   {copied ? (
                     <>
                       <Check className="w-4 h-4" />
-                      Copied!
+                      تم النسخ!
                     </>
                   ) : (
                     <>
                       <Copy className="w-4 h-4" />
-                      Copy
+                      نسخ
                     </>
                   )}
                 </button>
@@ -268,7 +268,7 @@ export default function HomePage() {
                   title="Print schedule"
                 >
                   <Printer className="w-4 h-4" />
-                  Print
+                  طباعة
                 </button>
               </div>
             </div>
@@ -284,7 +284,7 @@ export default function HomePage() {
                       {schedule.courseName}
                     </h3>
                     <p className="text-base font-medium text-gray-700">
-                      {schedule.courseCode} • <span className="text-lg font-semibold">Class {schedule.classNo}</span>
+                      {schedule.courseCode} • <span className="text-lg font-semibold">الفصل {schedule.classNo}</span>
                     </p>
                   </div>
                   <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
@@ -310,7 +310,7 @@ export default function HomePage() {
                   {schedule.rows && (
                     <div className="flex items-center gap-2 text-gray-700 md:col-span-2">
                       <Grid3x3 className="w-5 h-5 text-blue-600" />
-                      <span className="font-medium">Seat Range: {schedule.rows}</span>
+                      <span className="font-medium">نطاق المقاعد: {schedule.rows}</span>
                     </div>
                   )}
                 </div>
@@ -341,7 +341,7 @@ export default function HomePage() {
         {!loading && schedules.length === 0 && !error && (
           <div className="text-center py-12 text-gray-500">
             <BookOpen className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <p>Enter your student ID above to view your exam schedule</p>
+            <p>أدخل رقم الطالب أعلاه لعرض جدول الامتحانات</p>
           </div>
         )}
       </div>
