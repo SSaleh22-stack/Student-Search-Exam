@@ -12,8 +12,14 @@ export async function detectFileStructure(
   file: File | Buffer
 ): Promise<FileStructure> {
   const workbook = new ExcelJS.Workbook();
-  const buffer = file instanceof File ? await file.arrayBuffer() : file;
-  await workbook.xlsx.load(buffer);
+  let buffer: Buffer;
+  if (file instanceof File) {
+    const arrayBuffer = await file.arrayBuffer();
+    buffer = Buffer.from(arrayBuffer);
+  } else {
+    buffer = file;
+  }
+  await workbook.xlsx.load(buffer as any);
 
   const worksheet = workbook.worksheets[0];
   if (!worksheet) {

@@ -41,8 +41,14 @@ export async function parseExamSchedule(
   headerMapping?: HeaderMapping
 ): Promise<ParseExamResult> {
   const workbook = new ExcelJS.Workbook();
-  const buffer = file instanceof File ? await file.arrayBuffer() : file;
-  await workbook.xlsx.load(buffer);
+  let buffer: Buffer;
+  if (file instanceof File) {
+    const arrayBuffer = await file.arrayBuffer();
+    buffer = Buffer.from(arrayBuffer);
+  } else {
+    buffer = file;
+  }
+  await workbook.xlsx.load(buffer as any);
 
   const worksheet = workbook.worksheets[0];
   if (!worksheet) {
@@ -56,7 +62,7 @@ export async function parseExamSchedule(
   headerRow.eachCell({ includeEmpty: false }, (cell) => {
     const header = cell.value?.toString() || "";
     headers.push(header);
-    headerToColumnIndex[header] = cell.col; // Store the actual column index
+    headerToColumnIndex[header] = typeof cell.col === 'number' ? cell.col : Number(cell.col); // Store the actual column index
   });
 
   // Use provided mapping or try to auto-detect
@@ -363,10 +369,13 @@ export async function parseExamSchedule(
           else if (typeof value === "number") {
             isEmpty = false;
             try {
-              const date = ExcelJS.DateTime.fromExcelSerialDate(value);
-              const year = date.getFullYear();
-              const month = String(date.getMonth() + 1).padStart(2, "0");
-              const day = String(date.getDate()).padStart(2, "0");
+              // Excel serial date: days since January 1, 1900
+              // Convert to JavaScript date
+              const excelEpoch = new Date(1899, 11, 30); // Excel epoch is Dec 30, 1899
+              const jsDate = new Date(excelEpoch.getTime() + value * 86400000);
+              const year = jsDate.getFullYear();
+              const month = String(jsDate.getMonth() + 1).padStart(2, "0");
+              const day = String(jsDate.getDate()).padStart(2, "0");
               value = `${year}-${month}-${day}`;
               console.log(`[parseExam] Row ${rowNum}: Excel serial date formatted to: ${value} (WARNING: May have been converted from Hijri)`);
             } catch (e) {
@@ -406,14 +415,25 @@ export async function parseExamSchedule(
           } else if (typeof value === "number") {
             // Excel time as decimal (0.5 = noon, 0.25 = 6 AM)
             try {
-              const date = ExcelJS.DateTime.fromExcelSerialDate(value);
-              const hours = String(date.getHours()).padStart(2, "0");
-              const minutes = String(date.getMinutes()).padStart(2, "0");
-              value = `${hours}:${minutes}`;
+              // For time values, if < 1, it's a fraction of a day
+              if (value < 1 && value >= 0) {
+                const totalSeconds = Math.round(value * 86400); // seconds in a day
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                value = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+              } else {
+                // Excel serial date: days since January 1, 1900
+                const excelEpoch = new Date(1899, 11, 30);
+                const jsDate = new Date(excelEpoch.getTime() + value * 86400000);
+                const hours = String(jsDate.getHours()).padStart(2, "0");
+                const minutes = String(jsDate.getMinutes()).padStart(2, "0");
+                value = `${hours}:${minutes}`;
+              }
             } catch (e) {
               // If it's a small number (< 1), it's likely a time fraction
-              if (value < 1 && value >= 0) {
-                const totalMinutes = Math.round(value * 24 * 60);
+              const numValue = typeof value === "number" ? value : parseFloat(String(value));
+              if (!isNaN(numValue) && numValue < 1 && numValue >= 0) {
+                const totalMinutes = Math.round(numValue * 24 * 60);
                 const hours = Math.floor(totalMinutes / 60);
                 const minutes = totalMinutes % 60;
                 value = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;

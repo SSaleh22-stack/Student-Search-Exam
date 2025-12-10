@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Search, Calendar, Clock, MapPin, BookOpen, Loader2, Printer, Copy, Check, Grid3x3, User, Lock } from "lucide-react";
+import Image from "next/image";
 
 interface LecturerExam {
   lecturerName: string;
@@ -147,9 +148,11 @@ export default function LecturerPage() {
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <img 
+            <Image 
               src="/img/Qassim_University_logo.png" 
               alt="Qassim University Logo" 
+              width={200}
+              height={80}
               className="h-20 w-auto"
             />
           </div>

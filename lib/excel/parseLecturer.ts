@@ -205,8 +205,14 @@ export async function parseLecturerSchedule(
   headerMapping?: LecturerHeaderMapping
 ): Promise<ParseLecturerResult> {
   const workbook = new ExcelJS.Workbook();
-  const buffer = file instanceof File ? await file.arrayBuffer() : file;
-  await workbook.xlsx.load(buffer);
+  let buffer: Buffer;
+  if (file instanceof File) {
+    const arrayBuffer = await file.arrayBuffer();
+    buffer = Buffer.from(arrayBuffer);
+  } else {
+    buffer = file;
+  }
+  await workbook.xlsx.load(buffer as any);
 
   const worksheet = workbook.worksheets[0];
   if (!worksheet) {
@@ -220,7 +226,7 @@ export async function parseLecturerSchedule(
   headerRow.eachCell({ includeEmpty: false }, (cell) => {
     const header = cell.value?.toString() || "";
     headers.push(header);
-    headerToColumnIndex[header] = cell.col;
+    headerToColumnIndex[header] = typeof cell.col === 'number' ? cell.col : Number(cell.col);
   });
 
   // Use provided mapping or auto-detect
@@ -458,10 +464,12 @@ export async function parseLecturerSchedule(
           value = `${year}-${month}-${day}`;
         } else if (typeof value === "number") {
           try {
-            const date = ExcelJS.DateTime.fromExcelSerialDate(value);
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, "0");
-            const day = String(date.getDate()).padStart(2, "0");
+            // Excel serial date: days since January 1, 1900
+            const excelEpoch = new Date(1899, 11, 30); // Excel epoch is Dec 30, 1899
+            const jsDate = new Date(excelEpoch.getTime() + value * 86400000);
+            const year = jsDate.getFullYear();
+            const month = String(jsDate.getMonth() + 1).padStart(2, "0");
+            const day = String(jsDate.getDate()).padStart(2, "0");
             value = `${year}-${month}-${day}`;
           } catch (e) {
             value = String(value);

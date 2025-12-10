@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Upload, FileSpreadsheet, CheckCircle, XCircle, Loader2, LogOut, RefreshCw, Settings, Info, ChevronDown, ChevronUp, User, Users, X, Trash2, CheckSquare, Square } from "lucide-react";
 
 interface Dataset {
@@ -115,11 +116,22 @@ export default function AdminUploadPage() {
   // Dataset selection
   const [selectedDatasets, setSelectedDatasets] = useState<Set<string>>(new Set());
 
+  const checkAuth = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/check");
+      if (!res.ok) {
+        router.push("/admin");
+      }
+    } catch {
+      router.push("/admin");
+    }
+  }, [router]);
+
   useEffect(() => {
     checkAuth();
     loadDatasets();
     loadSettings();
-  }, []);
+  }, [checkAuth]);
 
   const loadSettings = async () => {
     try {
@@ -159,17 +171,6 @@ export default function AdminUploadPage() {
       setError(err instanceof Error ? err.message : "Failed to update settings");
     } finally {
       setLoadingSettings(false);
-    }
-  };
-
-  const checkAuth = async () => {
-    try {
-      const res = await fetch("/api/admin/check");
-      if (!res.ok) {
-        router.push("/admin");
-      }
-    } catch {
-      router.push("/admin");
     }
   };
 
@@ -792,9 +793,11 @@ No header mapping needed.`);
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
-            <img 
+            <Image 
               src="/img/Qassim_University_logo.png" 
               alt="Qassim University Logo" 
+              width={200}
+              height={48}
               className="h-12 w-auto"
             />
             <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
@@ -909,7 +912,7 @@ No header mapping needed.`);
                 <>
                   <div>
                     <label htmlFor="datasetName" className="block text-sm font-medium text-gray-700 mb-2">
-                      Dataset Name (e.g., "Term 1 2025")
+                      Dataset Name (e.g., &quot;Term 1 2025&quot;)
                     </label>
                     <input
                       id="datasetName"
