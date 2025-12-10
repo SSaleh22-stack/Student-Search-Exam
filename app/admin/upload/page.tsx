@@ -736,14 +736,53 @@ No header mapping needed.`);
       return;
     }
     
+    // File size validation (10MB per file limit for serverless timeout)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_TOTAL_SIZE = 20 * 1024 * 1024; // 20MB total
+    
     if (uploadType === "student") {
       if (examFiles.length === 0 || enrollFiles.length === 0 || !datasetName.trim()) {
         setError("Please provide at least one exam file, one enrollment file, and a dataset name");
         return;
       }
+      
+      // Check file sizes
+      let totalSize = 0;
+      for (const file of examFiles) {
+        if (file.size > MAX_FILE_SIZE) {
+          setError(`File "${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum file size is 10MB. Please split the file into smaller parts.`);
+          return;
+        }
+        totalSize += file.size;
+      }
+      for (const file of enrollFiles) {
+        if (file.size > MAX_FILE_SIZE) {
+          setError(`File "${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum file size is 10MB. Please split the file into smaller parts.`);
+          return;
+        }
+        totalSize += file.size;
+      }
+      if (totalSize > MAX_TOTAL_SIZE) {
+        setError(`Total file size (${(totalSize / 1024 / 1024).toFixed(2)}MB) exceeds the limit of 20MB. Please upload fewer or smaller files.`);
+        return;
+      }
     } else if (uploadType === "lecturer") {
       if (lecturerFiles.length === 0 || !datasetName.trim()) {
         setError("Please provide at least one lecturer file and a dataset name");
+        return;
+      }
+      
+      // Check file sizes
+      let totalSize = 0;
+      for (const file of lecturerFiles) {
+        if (file.size > MAX_FILE_SIZE) {
+          setError(`File "${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum file size is 10MB. Please split the file into smaller parts.`);
+          return;
+        }
+        totalSize += file.size;
+      }
+      if (totalSize > MAX_TOTAL_SIZE) {
+        setError(`Total file size (${(totalSize / 1024 / 1024).toFixed(2)}MB) exceeds the limit of 20MB. Please upload fewer or smaller files.`);
         return;
       }
     }

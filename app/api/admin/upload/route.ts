@@ -17,11 +17,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const formData = await request.formData();
     const uploadType = formData.get("uploadType") as string;
-    const examFiles = formData.getAll("examFiles") as File[];
-    const enrollFiles = formData.getAll("enrollFiles") as File[];
-    const lecturerFiles = formData.getAll("lecturerFiles") as File[];
     const datasetName = formData.get("datasetName") as string;
     const examMappingStr = formData.get("examMapping") as string;
     const enrollMappingStr = formData.get("enrollMapping") as string;
@@ -288,12 +284,10 @@ export async function POST(request: NextRequest) {
     // Insert exam schedules (only for student upload type)
     if (uploadType === "student") {
       console.log(`[Upload] Starting to insert ${examResult.validRows.length} exams into dataset ${dataset.id}`);
+      
+      // Validate and prepare exam data in batch
+      const validExams = [];
       for (const exam of examResult.validRows) {
-        // Log rows value before insertion
-        if (exam.rows !== undefined && exam.rows !== null) {
-          console.log(`[Upload] Exam rows value before insertion: "${exam.rows}" (type: ${typeof exam.rows})`);
-        }
-        try {
         // Validate exam data before inserting
         if (!exam.courseCode || !exam.examDate || !exam.period) {
           console.warn(`[Upload] Skipping invalid exam row:`, exam);
@@ -316,99 +310,110 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Check if exists
-        const existing = await prisma.courseExam.findUnique({
-          where: {
-            datasetId_courseCode_classNo_examDate_period: {
-              datasetId: dataset.id,
-              courseCode: exam.courseCode.trim(),
-              classNo: exam.classNo.trim(),
-              examDate: examDateStr, // Store as string (supports Hijri dates)
-              period: exam.period.trim(),
-            },
-          },
+        validExams.push({
+          datasetId: dataset.id,
+          courseCode: exam.courseCode.trim(),
+          courseName: exam.courseName.trim(),
+          classNo: exam.classNo.trim(),
+          examDate: examDateStr,
+          startTime: exam.startTime.trim(),
+          endTime: exam.endTime?.trim() || null,
+          place: exam.place.trim(),
+          period: exam.period.trim(),
+          rows: exam.rows ? String(exam.rows) : null,
+          seats: exam.seats ?? null,
         });
+      }
 
-        if (existing) {
-          await prisma.courseExam.update({
-            where: {
-              datasetId_courseCode_classNo_examDate_period: {
-                datasetId: dataset.id,
-                courseCode: exam.courseCode.trim(),
-                classNo: exam.classNo.trim(),
-                examDate: examDateStr,
-                period: exam.period.trim(),
-              },
-            },
-            data: {
-              courseName: exam.courseName.trim(),
-              startTime: exam.startTime.trim(),
-              endTime: exam.endTime?.trim() || null,
-              place: exam.place.trim(),
-              rows: exam.rows ? String(exam.rows) : null, // Ensure rows is a string
-              seats: exam.seats ?? null,
-            },
-          });
-          examUpdated++;
-        } else {
-          await prisma.courseExam.create({
-            data: {
-              datasetId: dataset.id,
-              courseCode: exam.courseCode.trim(),
-              courseName: exam.courseName.trim(),
-              classNo: exam.classNo.trim(),
-              examDate: examDateStr, // Store as string (supports Hijri dates)
-              startTime: exam.startTime.trim(),
-              endTime: exam.endTime?.trim() || null,
-              place: exam.place.trim(),
-              period: exam.period.trim(),
-              rows: exam.rows ? String(exam.rows) : null, // Ensure rows is a string
-              seats: exam.seats ?? null,
-            },
-          });
-          examInserted++;
-        }
-      } catch (err) {
-        console.error(`[Upload] Error inserting exam row:`, exam);
-        console.error(`[Upload] Error details:`, err);
-        if (err instanceof Error) {
-          console.error(`[Upload] Error message:`, err.message);
-          console.error(`[Upload] Error stack:`, err.stack);
-        }
-        failed++;
-        }
+      // Batch process exams in parallel (smaller batches to avoid timeout)
+      console.log(`[Upload] Processing ${validExams.length} valid exams in batches of 50`);
+      const BATCH_SIZE = 50;
+      for (let i = 0; i < validExams.length; i += BATCH_SIZE) {
+        const batch = validExams.slice(i, i + BATCH_SIZE);
+        await Promise.all(
+          batch.map(async (exam) => {
+            try {
+              const existing = await prisma.courseExam.findUnique({
+                where: {
+                  datasetId_courseCode_classNo_examDate_period: {
+                    datasetId: exam.datasetId,
+                    courseCode: exam.courseCode,
+                    classNo: exam.classNo,
+                    examDate: exam.examDate,
+                    period: exam.period,
+                  },
+                },
+              });
+
+              if (existing) {
+                await prisma.courseExam.update({
+                  where: {
+                    datasetId_courseCode_classNo_examDate_period: {
+                      datasetId: exam.datasetId,
+                      courseCode: exam.courseCode,
+                      classNo: exam.classNo,
+                      examDate: exam.examDate,
+                      period: exam.period,
+                    },
+                  },
+                  data: {
+                    courseName: exam.courseName,
+                    startTime: exam.startTime,
+                    endTime: exam.endTime,
+                    place: exam.place,
+                    rows: exam.rows,
+                    seats: exam.seats,
+                  },
+                });
+                examUpdated++;
+              } else {
+                await prisma.courseExam.create({ data: exam });
+                examInserted++;
+              }
+            } catch (err) {
+              console.error(`[Upload] Error processing exam:`, err);
+              failed++;
+            }
+          })
+        );
       }
       console.log(`[Upload] Exam insertion complete: ${examInserted} inserted, ${examUpdated} updated, ${failed} failed`);
 
-      // Insert enrollments
-      for (const enroll of enrollResult.validRows) {
-        try {
-          const existing = await prisma.enrollment.findUnique({
-            where: {
-              datasetId_studentId_courseCode_classNo: {
-                datasetId: dataset.id,
-                studentId: enroll.studentId,
-                courseCode: enroll.courseCode,
-                classNo: enroll.classNo,
-              },
-            },
-          });
+      // Insert enrollments in batches
+      console.log(`[Upload] Processing ${enrollResult.validRows.length} enrollments in batches`);
+      const ENROLL_BATCH_SIZE = 200;
+      const enrollmentsToInsert = enrollResult.validRows.map(enroll => ({
+        datasetId: dataset.id,
+        studentId: enroll.studentId,
+        courseCode: enroll.courseCode,
+        classNo: enroll.classNo,
+      }));
 
-          if (!existing) {
-            await prisma.enrollment.create({
-              data: {
-                datasetId: dataset.id,
-                studentId: enroll.studentId,
-                courseCode: enroll.courseCode,
-                classNo: enroll.classNo,
-              },
-            });
-            enrollInserted++;
-          }
-          // If exists, skip (no update needed)
+      for (let i = 0; i < enrollmentsToInsert.length; i += ENROLL_BATCH_SIZE) {
+        const batch = enrollmentsToInsert.slice(i, i + ENROLL_BATCH_SIZE);
+        try {
+          // Use createMany with skipDuplicates for better performance
+          const result = await prisma.enrollment.createMany({
+            data: batch,
+            skipDuplicates: true,
+          });
+          enrollInserted += result.count;
         } catch (err) {
-          console.error("Error inserting enrollment:", err);
-          failed++;
+          console.error("Error inserting enrollment batch:", err);
+          // Fallback to individual inserts if batch fails
+          for (const enroll of batch) {
+            try {
+              await prisma.enrollment.create({
+                data: enroll,
+              });
+              enrollInserted++;
+            } catch (e) {
+              // Skip duplicates
+              if (!(e as any).code?.includes('P2002')) {
+                failed++;
+              }
+            }
+          }
         }
       }
     }
