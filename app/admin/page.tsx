@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, Loader2 } from "lucide-react";
+import { safeJsonParse } from "@/lib/utils";
 
 export default function AdminLoginPage() {
   const [username, setUsername] = useState("");
@@ -36,7 +37,7 @@ export default function AdminLoginPage() {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await response.json();
+      const data = await safeJsonParse(response);
 
       if (!response.ok) {
         throw new Error(data.error || "فشل تسجيل الدخول");

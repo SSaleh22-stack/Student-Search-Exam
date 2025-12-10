@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Search, Calendar, Clock, MapPin, BookOpen, Loader2, Printer, Copy, Check, Grid3x3, User, Lock } from "lucide-react";
+import { safeJsonParse } from "@/lib/utils";
 import Image from "next/image";
 
 interface LecturerExam {
@@ -55,7 +56,7 @@ export default function LecturerPage() {
 
     try {
       const response = await fetch(`/api/lecturer/schedule?lecturerName=${encodeURIComponent(lecturerName.trim())}`);
-      const data = await response.json();
+      const data = await safeJsonParse(response);
 
       if (!response.ok) {
         throw new Error(data.error || "فشل في جلب الجدول");

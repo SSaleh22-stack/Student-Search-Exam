@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Search, Calendar, Clock, MapPin, BookOpen, Loader2, Printer, Copy, Check, Grid3x3, Lock } from "lucide-react";
 import { formatHijriDate } from "@/lib/utils/hijri-converter";
+import { safeJsonParse } from "@/lib/utils";
 import Image from "next/image";
 
 interface ExamSchedule {
@@ -51,7 +52,7 @@ export default function HomePage() {
 
     try {
       const response = await fetch(`/api/student/schedule?studentId=${encodeURIComponent(studentId.trim())}`);
-      const data = await response.json();
+      const data = await safeJsonParse(response);
 
       if (!response.ok) {
         throw new Error(data.error || "فشل في جلب الجدول");
