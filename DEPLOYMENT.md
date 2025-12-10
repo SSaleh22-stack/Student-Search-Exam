@@ -40,8 +40,9 @@ This guide will help you deploy your Exam Schedule Lookup application to the web
    - In the project settings, go to "Environment Variables"
    - Add the following variables:
      ```
-     DATABASE_URL = postgresql://neondb_owner:npg_KetP0UikvJ3W@ep-old-bar-aged5ygd-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require&schema=public
+     DATABASE_URL = postgresql://username:password@host:port/database?sslmode=require&schema=public
      ```
+     **⚠️ SECURITY WARNING:** Never commit your actual DATABASE_URL to Git. Use environment variables only.
    - (Optional) Add admin credentials:
      ```
      ADMIN_USERNAME = admin

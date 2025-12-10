@@ -90,3 +90,15 @@ model Settings {
   updatedAt         DateTime @updatedAt
 }
 
+model Admin {
+  id          String   @id @default(cuid())
+  username    String   @unique
+  passwordHash String
+  isHeadAdmin Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([username])
+  @@index([isHeadAdmin])
+}
+

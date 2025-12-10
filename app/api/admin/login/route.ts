@@ -14,17 +14,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const isValid = await verifyAdmin(username, password);
-    if (!isValid) {
+    const admin = await verifyAdmin(username, password);
+    if (!admin) {
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 }
       );
     }
 
-    await createSession();
+    await createSession(admin.id);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ 
+      success: true,
+      admin: {
+        username: admin.username,
+        isHeadAdmin: admin.isHeadAdmin,
+      }
+    });
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(

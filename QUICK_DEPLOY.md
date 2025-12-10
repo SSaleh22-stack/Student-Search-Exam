@@ -25,8 +25,9 @@ git push -u origin main
    - Click "Environment Variables"
    - Add:
      ```
-     DATABASE_URL = postgresql://neondb_owner:npg_KetP0UikvJ3W@ep-old-bar-aged5ygd-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require&schema=public
+     DATABASE_URL = postgresql://username:password@host:port/database?sslmode=require&schema=public
      ```
+     **⚠️ IMPORTANT:** Replace with your actual database connection string. Never commit real credentials to Git!
 6. **Click**: "Deploy"
 7. **Wait 2-3 minutes** ⏳
 8. **Done!** Your app is live! 🎉
