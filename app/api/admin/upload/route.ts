@@ -17,6 +17,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const formData = await request.formData();
+    
+    // Early file size validation (10MB per file, 20MB total)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_TOTAL_SIZE = 20 * 1024 * 1024; // 20MB
+    
+    const examFiles = formData.getAll("examFiles") as File[];
+    const enrollFiles = formData.getAll("enrollFiles") as File[];
+    const lecturerFiles = formData.getAll("lecturerFiles") as File[];
+    
+    let totalSize = 0;
+    for (const file of [...examFiles, ...enrollFiles, ...lecturerFiles]) {
+      if (file.size > MAX_FILE_SIZE) {
+        return NextResponse.json(
+          { 
+            error: `File "${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum file size is 10MB. Please split the file into smaller parts.`,
+            fileSize: file.size,
+            maxFileSize: MAX_FILE_SIZE,
+          },
+          { status: 400 }
+        );
+      }
+      totalSize += file.size;
+    }
+    
+    if (totalSize > MAX_TOTAL_SIZE) {
+      return NextResponse.json(
+        { 
+          error: `Total file size (${(totalSize / 1024 / 1024).toFixed(2)}MB) exceeds the limit of 20MB. Please upload fewer or smaller files.`,
+          totalSize,
+          maxTotalSize: MAX_TOTAL_SIZE,
+        },
+        { status: 400 }
+      );
+    }
+
     const uploadType = formData.get("uploadType") as string;
     const datasetName = formData.get("datasetName") as string;
     const examMappingStr = formData.get("examMapping") as string;
