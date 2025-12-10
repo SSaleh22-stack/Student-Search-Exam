@@ -1,0 +1,92 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Dataset {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  isActive  Boolean  @default(false)
+  type      String?  @default("student") // "student" or "lecturer"
+  
+  courseExams  CourseExam[]
+  enrollments  Enrollment[]
+  lecturerExams LecturerExam[]
+  
+  @@index([isActive])
+  @@index([type])
+}
+
+model CourseExam {
+  id         String   @id @default(cuid())
+  datasetId  String
+  courseCode String
+  courseName String
+  classNo    String
+  examDate   String   // Date in YYYY-MM-DD format (supports Hijri dates like "1447-07-01")
+  startTime  String   // HH:MM format
+  endTime    String   // HH:MM format
+  place      String
+  period     String
+  rows       String? // Row range where students sit (e.g., "1-8", "1-9", "4-6")
+  seats      Int?    // Number of seats per row or total seats (optional)
+  
+  dataset Dataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  
+  @@unique([datasetId, courseCode, classNo, examDate, period])
+  @@index([datasetId, courseCode, classNo])
+}
+
+model Enrollment {
+  id         String   @id @default(cuid())
+  datasetId  String
+  studentId  String
+  courseCode String
+  classNo    String
+  
+  dataset Dataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  
+  @@unique([datasetId, studentId, courseCode, classNo])
+  @@index([datasetId, studentId])
+}
+
+model LecturerExam {
+  id              String   @id @default(cuid())
+  datasetId       String
+  lecturerName    String
+  role            String?
+  grade           String?
+  examCode        String?
+  section         String
+  courseCode      String
+  courseName      String
+  numberOfStudents Int?
+  room            String
+  column          String? // Column range like "1-8"
+  day             String?
+  examDate        String   // Date in YYYY-MM-DD format (supports Hijri dates)
+  examPeriod      String
+  periodStart     String   // HH:MM format
+  invigilator     String?
+  
+  dataset Dataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  
+  @@index([datasetId, lecturerName])
+  @@index([datasetId, courseCode, section])
+}
+
+model Settings {
+  id                String   @id @default("settings")
+  studentSearchActive Boolean @default(true)
+  lecturerSearchActive Boolean @default(true)
+  updatedAt         DateTime @updatedAt
+}
+

@@ -1,0 +1,126 @@
+You are a senior full-stack engineer building a production-ready “Exam Schedule Lookup” web app.
+
+GOAL
+Build a web app where:
+1) Admins (doctors) upload TWO Excel files:
+   A) ExamSchedule.xlsx: course + class/section + exam date/time/place/period
+   B) StudentEnrollments.xlsx: student_id + course_code + class/section number
+2) Students enter their student ID and see ONLY:
+   - course name
+   - course code
+   - class/section number
+   - exam date
+   - exam start/end time
+   - exam place/location
+   - exam period/type (e.g., Midterm/Final)
+
+TECH STACK (default)
+- Next.js (App Router) + TypeScript
+- Postgres + Prisma
+- Tailwind CSS (and shadcn/ui optional)
+- Excel parsing: choose ONE (SheetJS OR ExcelJS) and use it consistently
+- Validation: Zod for row validation
+
+NON-NEGOTIABLES
+- Dataset versioning: each upload creates a dataset (e.g., “Term 1 2025”). Admin can activate ONE dataset as “current”.
+- Re-upload is allowed and must not break older datasets.
+- Robust Excel validation: verify required headers; validate each row; show a clear error report (row number + issue).
+- Safe duplicates handling: use unique keys and upsert rules (define them clearly).
+- Student privacy: student lookup returns schedule results only; never expose other students or extra data.
+- Admin routes must be protected by authentication (simple username/password session is OK for MVP).
+- Provide /samples Excel templates and /docs with a strict data dictionary.
+
+DATA CONTRACT (columns)
+ExamSchedule.xlsx required headers (case-insensitive trim):
+- course_code (string)
+- course_name (string)
+- class_no (string or int)
+- exam_date (YYYY-MM-DD)
+- start_time (HH:MM)
+- end_time (HH:MM)
+- place (string)
+- period (string)
+
+StudentEnrollments.xlsx required headers:
+- student_id (string)
+- course_code (string)
+- class_no (string or int)
+
+NORMALIZED DATA MODEL (Prisma)
+- Dataset(id, name, createdAt, isActive)
+- CourseExam(id, datasetId, courseCode, courseName, classNo, examDate, startTime, endTime, place, period)
+- Enrollment(id, datasetId, studentId, courseCode, classNo)
+
+JOIN LOGIC
+StudentId -> Enrollment (active dataset) -> join to CourseExam on (courseCode + classNo) -> sort by examDate then startTime.
+
+PAGES / ROUTES
+Student:
+- GET / (student lookup form + results)
+
+Admin:
+- GET /admin (login)
+- GET /admin/upload (upload page + dataset list + activate button)
+
+API (Route Handlers)
+- POST /api/admin/login
+- POST /api/admin/logout
+- POST /api/admin/upload (multipart: examFile + enrollFile + datasetName)
+- POST /api/admin/activate (datasetId)
+- GET  /api/student/schedule?studentId=...
+
+ENGINEERING RULES
+- Work in milestones. After each milestone:
+  1) run typecheck/lint/tests,
+  2) summarize changes,
+  3) list next steps,
+  4) STOP and wait for my approval before continuing.
+- Do NOT jump ahead or implement later milestones early.
+- Prefer clarity and maintainability over cleverness.
+- Add meaningful error messages and empty states.
+
+MILESTONES (small -> big -> sparkles)
+M0) Repo skeleton
+- Create Next.js app, layout, student page, admin page placeholders.
+
+M1) Docs + templates
+- Add /docs/PRD.md, /docs/DATA_DICTIONARY.md, /docs/API_CONTRACT.md
+- Add /samples/ExamSchedule.sample.xlsx and /samples/StudentEnrollments.sample.xlsx (exact headers)
+
+M2) Excel parsing + validation (no DB yet)
+- Implement /lib/excel/parseExam.ts and parseEnroll.ts
+- Zod schemas + detailed row errors
+- Provide unit tests for parser
+
+M3) End-to-end lookup (in-memory)
+- Upload stores parsed data in memory for quick demo
+- Student lookup works and UI is clean
+
+M4) Persistence (Prisma + Postgres)
+- Add Prisma schema + migrations
+- Store datasets + rows, implement “active dataset”
+
+M5) Admin upload UX
+- Upload page shows dataset list + activation
+- Import summary: inserted/updated/failed + readable error report
+
+M6) Authentication
+- Simple admin auth + session cookies
+- Protect /admin and admin APIs
+
+M7) Hardening
+- Rate limit student lookup
+- Input sanitization, logging, better edge-case handling
+
+M8) Accessorizing ONLY (no major actions)
+- UI sparkles only: nicer cards, subtle animations, skeleton loaders, print view, copy buttons.
+- No schema changes, no new flows, no major refactors.
+
+DELIVERABLES
+- Fully running app
+- README with setup + env vars + deployment notes
+- /docs and /samples included
+- Basic tests (parsing + join logic)
+
+START NOW
+Begin with M0 only. Create the project structure and the basic pages. Then stop and report.

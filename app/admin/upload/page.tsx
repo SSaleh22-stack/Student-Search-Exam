@@ -1,0 +1,1683 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Upload, FileSpreadsheet, CheckCircle, XCircle, Loader2, LogOut, RefreshCw, Settings, Info, ChevronDown, ChevronUp, User, Users, X, Trash2, CheckSquare, Square } from "lucide-react";
+
+interface Dataset {
+  id: string;
+  name: string;
+  createdAt: string;
+  isActive: boolean;
+  type?: string;
+}
+
+interface HeaderMapping {
+  [key: string]: string;
+}
+
+interface ExamData {
+  id: string;
+  courseCode: string;
+  courseName: string;
+  classNo: string;
+  examDate: string;
+  startTime: string;
+  endTime: string;
+  place: string;
+  period: string;
+  rows?: number | null;
+  seats?: number | null;
+}
+
+interface EnrollmentData {
+  id: string;
+  studentId: string;
+  courseCode: string;
+  classNo: string;
+}
+
+interface LecturerExamData {
+  id: string;
+  lecturerName: string;
+  role?: string;
+  grade?: string;
+  examCode?: string;
+  section: string;
+  courseCode: string;
+  courseName: string;
+  numberOfStudents?: number;
+  room: string;
+  column?: string;
+  day?: string;
+  examDate: string;
+  examPeriod: string;
+  periodStart: string;
+  invigilator?: string;
+}
+
+interface DatasetDetails {
+  dataset: {
+    id: string;
+    name: string;
+    createdAt: string;
+    isActive: boolean;
+    type?: string;
+  };
+  summary: {
+    totalExams: number;
+    totalLecturerExams: number;
+    totalEnrollments: number;
+    uniqueCourses: number;
+    uniqueStudents: number;
+    uniqueLecturers: number;
+  };
+  exams: ExamData[];
+  lecturerExams?: LecturerExamData[];
+  enrollments: EnrollmentData[];
+}
+
+export default function AdminUploadPage() {
+  const router = useRouter();
+  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [uploadType, setUploadType] = useState<"student" | "lecturer" | null>(null);
+  const [datasetName, setDatasetName] = useState("");
+  const [examFiles, setExamFiles] = useState<File[]>([]);
+  const [enrollFiles, setEnrollFiles] = useState<File[]>([]);
+  const [lecturerFiles, setLecturerFiles] = useState<File[]>([]);
+  
+  // Header mapping states
+  const [examHeaders, setExamHeaders] = useState<string[]>([]);
+  const [enrollHeaders, setEnrollHeaders] = useState<string[]>([]);
+  const [lecturerHeaders, setLecturerHeaders] = useState<string[]>([]);
+  const [examMapping, setExamMapping] = useState<HeaderMapping>({});
+  const [enrollMapping, setEnrollMapping] = useState<HeaderMapping>({});
+  const [lecturerMapping, setLecturerMapping] = useState<HeaderMapping>({});
+  const [showMapping, setShowMapping] = useState(false);
+  const [examAutoDetectSuccess, setExamAutoDetectSuccess] = useState(false);
+  
+  // Dataset details states
+  const [expandedDataset, setExpandedDataset] = useState<string | null>(null);
+  const [datasetDetails, setDatasetDetails] = useState<Record<string, DatasetDetails>>({});
+  const [loadingDetails, setLoadingDetails] = useState<string | null>(null);
+  
+  // Search page settings
+  const [studentSearchActive, setStudentSearchActive] = useState(true);
+  const [lecturerSearchActive, setLecturerSearchActive] = useState(true);
+  const [loadingSettings, setLoadingSettings] = useState(false);
+  const [readingHeaders, setReadingHeaders] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  
+  // Dataset selection
+  const [selectedDatasets, setSelectedDatasets] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    checkAuth();
+    loadDatasets();
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const res = await fetch("/api/admin/settings");
+      if (res.ok) {
+        const data = await res.json();
+        setStudentSearchActive(data.studentSearchActive ?? true);
+        setLecturerSearchActive(data.lecturerSearchActive ?? true);
+      }
+    } catch (err) {
+      console.error("Failed to load settings:", err);
+    }
+  };
+
+  const updateSearchSettings = async (type: "student" | "lecturer", isActive: boolean) => {
+    setLoadingSettings(true);
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentSearchActive: type === "student" ? isActive : studentSearchActive,
+          lecturerSearchActive: type === "lecturer" ? isActive : lecturerSearchActive,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update settings");
+      }
+
+      const data = await res.json();
+      setStudentSearchActive(data.studentSearchActive);
+      setLecturerSearchActive(data.lecturerSearchActive);
+      setSuccess(`${type === "student" ? "Student" : "Lecturer"} search page ${isActive ? "activated" : "deactivated"} successfully`);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update settings");
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+
+  const checkAuth = async () => {
+    try {
+      const res = await fetch("/api/admin/check");
+      if (!res.ok) {
+        router.push("/admin");
+      }
+    } catch {
+      router.push("/admin");
+    }
+  };
+
+  const loadDatasets = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/datasets");
+      if (res.ok) {
+        const data = await res.json();
+        setDatasets(data.datasets || []);
+      }
+    } catch (err) {
+      console.error("Failed to load datasets:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/admin/logout", { method: "POST" });
+    router.push("/admin");
+  };
+
+  const handleToggleSelection = (datasetId: string) => {
+    setSelectedDatasets(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(datasetId)) {
+        newSet.delete(datasetId);
+      } else {
+        newSet.add(datasetId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedDatasets.size === datasets.length) {
+      setSelectedDatasets(new Set());
+    } else {
+      setSelectedDatasets(new Set(datasets.map(d => d.id)));
+    }
+  };
+
+  const handleBulkActivate = async () => {
+    if (selectedDatasets.size === 0) {
+      setError("Please select at least one dataset");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const results = await Promise.allSettled(
+        Array.from(selectedDatasets).map(datasetId =>
+          fetch("/api/admin/activate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ datasetId }),
+          })
+        )
+      );
+
+      const failed = results.filter(r => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok));
+      if (failed.length > 0) {
+        throw new Error(`${failed.length} dataset(s) failed to activate`);
+      }
+
+      setSuccess(`${selectedDatasets.size} dataset(s) activated successfully`);
+      setSelectedDatasets(new Set());
+      loadDatasets();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to activate datasets");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkDeactivate = async () => {
+    if (selectedDatasets.size === 0) {
+      setError("Please select at least one dataset");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const results = await Promise.allSettled(
+        Array.from(selectedDatasets).map(datasetId =>
+          fetch("/api/admin/deactivate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ datasetId }),
+          })
+        )
+      );
+
+      const failed = results.filter(r => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok));
+      if (failed.length > 0) {
+        throw new Error(`${failed.length} dataset(s) failed to deactivate`);
+      }
+
+      setSuccess(`${selectedDatasets.size} dataset(s) deactivated successfully`);
+      setSelectedDatasets(new Set());
+      loadDatasets();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to deactivate datasets");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedDatasets.size === 0) {
+      setError("Please select at least one dataset");
+      return;
+    }
+
+    const selectedNames = datasets
+      .filter(d => selectedDatasets.has(d.id))
+      .map(d => d.name)
+      .join(", ");
+
+    if (!confirm(`Are you sure you want to delete ${selectedDatasets.size} dataset(s)?\n\n${selectedNames}\n\nThis action cannot be undone and will delete all associated exams and enrollments.`)) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const results = await Promise.allSettled(
+        Array.from(selectedDatasets).map(datasetId =>
+          fetch("/api/admin/delete-dataset", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ datasetId }),
+          })
+        )
+      );
+
+      const failed = results.filter(r => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok));
+      if (failed.length > 0) {
+        throw new Error(`${failed.length} dataset(s) failed to delete`);
+      }
+
+      setSuccess(`${selectedDatasets.size} dataset(s) deleted successfully`);
+      // Remove from expanded state if any were expanded
+      setExpandedDataset(null);
+      setDatasetDetails({});
+      setSelectedDatasets(new Set());
+      loadDatasets();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete datasets");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (datasetId: string, datasetName: string) => {
+    if (!confirm(`Are you sure you want to delete the dataset "${datasetName}"? This action cannot be undone and will delete all associated exams and enrollments.`)) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/delete-dataset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ datasetId }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete dataset");
+      }
+
+      setSuccess("Dataset deleted successfully");
+      // Remove from expanded state if it was expanded
+      if (expandedDataset === datasetId) {
+        setExpandedDataset(null);
+        setDatasetDetails((prev) => {
+          const newDetails = { ...prev };
+          delete newDetails[datasetId];
+          return newDetails;
+        });
+      }
+      loadDatasets();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete dataset");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadDatasetDetails = async (datasetId: string) => {
+    if (datasetDetails[datasetId]) {
+      // Already loaded, just toggle
+      setExpandedDataset(expandedDataset === datasetId ? null : datasetId);
+      return;
+    }
+
+    setLoadingDetails(datasetId);
+    try {
+      const res = await fetch(`/api/admin/dataset-details?datasetId=${datasetId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setDatasetDetails((prev) => ({ ...prev, [datasetId]: data }));
+        setExpandedDataset(datasetId);
+      } else {
+        throw new Error("Failed to load dataset details");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load dataset details");
+    } finally {
+      setLoadingDetails(null);
+    }
+  };
+
+  const readHeaders = async (file: File, fileType: "exam" | "enroll" | "lecturer") => {
+    setReadingHeaders(true);
+    try {
+      // For enrollment files, check if it's block-structured first
+      if (fileType === "enroll") {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("fileType", "enroll");
+        
+        // Check structure
+        const structureRes = await fetch("/api/admin/check-structure", {
+          method: "POST",
+          body: formData,
+        });
+        
+        if (structureRes.ok) {
+          const structureData = await structureRes.json();
+          if (structureData.isBlockStructure) {
+            // Block-structured file - no header mapping needed
+            setShowMapping(false);
+            setError(null);
+            setSuccess(`Block-structured file detected! The system will automatically extract:
+- Student IDs and names
+- Course codes
+- Class/Section numbers (الشعبة) from column 13
+No header mapping needed.`);
+            return;
+          } else if (structureData.isSectionStructure) {
+            // Section-structured file - no header mapping needed
+            setShowMapping(false);
+            setError(null);
+            setSuccess(`Course-section structured file detected! The system will automatically extract:
+- Student IDs
+- Course codes (from "المقرر:" rows)
+- Section numbers (from "الشعبة:" rows)
+No header mapping needed.`);
+            return;
+          }
+        }
+      }
+      
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("fileType", fileType);
+
+      const res = await fetch("/api/admin/read-headers", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to read headers");
+      }
+
+      const data = await res.json();
+      
+      if (fileType === "exam") {
+        setExamHeaders(data.headers);
+        // Auto-map headers (try to match)
+        const autoMapping: HeaderMapping = {};
+        data.requiredFields.forEach((field: string) => {
+          const normalizedField = field.toLowerCase().replace(/_/g, "");
+          const matched = data.headers.find((h: string) => {
+            const normalized = h.toLowerCase().replace(/\s+/g, "").replace(/_/g, "");
+            return normalized.includes(normalizedField) || normalizedField.includes(normalized);
+          });
+          if (matched) {
+            autoMapping[field] = matched;
+          }
+        });
+        setExamMapping(autoMapping);
+      } else if (fileType === "lecturer") {
+        setLecturerHeaders(data.headers);
+        const autoMapping: HeaderMapping = {};
+        data.requiredFields.forEach((field: string) => {
+          const normalizedField = field.toLowerCase().replace(/_/g, "");
+          const matched = data.headers.find((h: string) => {
+            const normalized = h.toLowerCase().replace(/\s+/g, "").replace(/_/g, "");
+            return normalized.includes(normalizedField) || normalizedField.includes(normalized);
+          });
+          if (matched) {
+            autoMapping[field] = matched;
+          }
+        });
+        setLecturerMapping(autoMapping);
+      } else {
+        setEnrollHeaders(data.headers);
+        const autoMapping: HeaderMapping = {};
+        data.requiredFields.forEach((field: string) => {
+          const normalizedField = field.toLowerCase().replace(/_/g, "");
+          const matched = data.headers.find((h: string) => {
+            const normalized = h.toLowerCase().replace(/\s+/g, "").replace(/_/g, "");
+            return normalized.includes(normalizedField) || normalizedField.includes(normalized);
+          });
+          if (matched) {
+            autoMapping[field] = matched;
+          }
+        });
+        setEnrollMapping(autoMapping);
+      }
+      
+      setShowMapping(true);
+    } catch (err) {
+      console.error("Error reading headers:", err);
+      setError("Failed to read Excel headers");
+    } finally {
+      setReadingHeaders(false);
+    }
+  };
+
+  const handleExamFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setExamFiles(files);
+    if (files.length > 0) {
+      setReadingHeaders(true);
+      // Check auto-detection for the first file
+      const firstFile = files[0];
+      try {
+        const checkFormData = new FormData();
+        checkFormData.append("file", firstFile);
+        const checkRes = await fetch("/api/admin/check-exam-auto-detect", {
+          method: "POST",
+          body: checkFormData,
+        });
+        
+        if (checkRes.ok) {
+          const checkData = await checkRes.json();
+          if (checkData.canAutoDetect) {
+            // Auto-detection will work, set mapping and don't show UI
+            setExamMapping(checkData.mapping);
+            setExamAutoDetectSuccess(true);
+            setShowMapping(false);
+            return;
+          } else {
+            // Auto-detection failed, show mapping UI
+            setExamAutoDetectSuccess(false);
+            readHeaders(firstFile, "exam");
+          }
+        } else {
+          // If check fails, fall back to showing mapping UI
+          setExamAutoDetectSuccess(false);
+          readHeaders(firstFile, "exam");
+        }
+      } catch (err) {
+        // If check fails, fall back to showing mapping UI
+        setExamAutoDetectSuccess(false);
+        await readHeaders(firstFile, "exam");
+      } finally {
+        setReadingHeaders(false);
+      }
+    }
+  };
+
+  const handleEnrollFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setEnrollFiles(files);
+    if (files.length > 0) {
+      setReadingHeaders(true);
+      try {
+        // Read headers from the first file
+        await readHeaders(files[0], "enroll");
+      } finally {
+        setReadingHeaders(false);
+      }
+    }
+  };
+
+  const handleLecturerFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setLecturerFiles(files);
+    if (files.length > 0) {
+      setReadingHeaders(true);
+      try {
+        // Read headers from the first file
+        await readHeaders(files[0], "lecturer");
+      } finally {
+        setReadingHeaders(false);
+      }
+    }
+  };
+
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadType) {
+      setError("Please select upload type (Student or Lecturer)");
+      return;
+    }
+    
+    if (uploadType === "student") {
+      if (examFiles.length === 0 || enrollFiles.length === 0 || !datasetName.trim()) {
+        setError("Please provide at least one exam file, one enrollment file, and a dataset name");
+        return;
+      }
+    } else if (uploadType === "lecturer") {
+      if (lecturerFiles.length === 0 || !datasetName.trim()) {
+        setError("Please provide at least one lecturer file and a dataset name");
+        return;
+      }
+    }
+
+    // Check if enrollment files are block-structured or section-structured (only for student upload)
+    let isBlockStructured = false;
+    let isSectionStructured = false;
+    if (uploadType === "student" && enrollFiles.length > 0) {
+      try {
+        const checkFormData = new FormData();
+        checkFormData.append("file", enrollFiles[0]); // Check first file
+        checkFormData.append("fileType", "enroll");
+        const structureRes = await fetch("/api/admin/check-structure", {
+          method: "POST",
+          body: checkFormData,
+        });
+        if (structureRes.ok) {
+          const structureData = await structureRes.json();
+          isBlockStructured = structureData.isBlockStructure;
+          isSectionStructured = structureData.isSectionStructure || false;
+        }
+      } catch (err) {
+        // Continue with validation if check fails
+      }
+    }
+    
+    // Validate mappings based on upload type
+    if (uploadType === "student") {
+      const examRequired = ["course_code", "course_name", "class_no", "exam_date", "start_time", "place", "period"];
+      const enrollRequired = (isBlockStructured || isSectionStructured) ? [] : ["student_id", "course_code", "class_no"];
+      
+      const missingExam = examRequired.filter(f => !examMapping[f]);
+      const missingEnroll = enrollRequired.filter(f => !enrollMapping[f]);
+      
+      if (missingExam.length > 0 || missingEnroll.length > 0) {
+        setError(`Please map all required fields. Missing: ${[...missingExam, ...missingEnroll].join(", ")}`);
+        return;
+      }
+    } else if (uploadType === "lecturer") {
+      const lecturerRequired = ["lecturer_name", "section", "course_code", "course_name", "room", "exam_date", "exam_period", "period_start"];
+      const missingLecturer = lecturerRequired.filter(f => !lecturerMapping[f]);
+      
+      if (missingLecturer.length > 0) {
+        setError(`Please map all required fields. Missing: ${missingLecturer.join(", ")}`);
+        return;
+      }
+    }
+
+    setUploading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("uploadType", uploadType);
+      formData.append("datasetName", datasetName.trim());
+      
+      if (uploadType === "student") {
+        // Append all exam files
+        examFiles.forEach((file) => {
+          formData.append("examFiles", file);
+        });
+        // Append all enrollment files
+        enrollFiles.forEach((file) => {
+          formData.append("enrollFiles", file);
+        });
+        formData.append("examMapping", JSON.stringify(examMapping));
+        // Only send enrollment mapping if not block-structured
+        if (!isBlockStructured && !isSectionStructured) {
+          formData.append("enrollMapping", JSON.stringify(enrollMapping));
+        }
+      } else if (uploadType === "lecturer") {
+        // Append all lecturer files
+        lecturerFiles.forEach((file) => {
+          formData.append("lecturerFiles", file);
+        });
+        // Send lecturer mapping if headers are available
+        if (lecturerHeaders.length > 0) {
+          formData.append("lecturerMapping", JSON.stringify(lecturerMapping));
+        }
+      }
+
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.examErrors || data.enrollErrors || data.lecturerErrors) {
+          const examErrCount = data.totalExamErrors || data.examErrors?.length || 0;
+          const enrollErrCount = data.totalEnrollErrors || data.enrollErrors?.length || 0;
+          const lecturerErrCount = data.totalLecturerErrors || data.lecturerErrors?.length || 0;
+          
+          let errorMsg = `Validation failed: ${examErrCount} exam errors, ${enrollErrCount} enrollment errors`;
+          if (lecturerErrCount > 0) {
+            errorMsg += `, ${lecturerErrCount} lecturer errors`;
+          }
+          errorMsg += `.`;
+          
+          if (data.suggestion) {
+            errorMsg += `\n\n${data.suggestion}`;
+          }
+          
+          // Show error summary for lecturer errors
+          if (data.errorSummary && uploadType === "lecturer") {
+            const commonErrors = Object.entries(data.errorSummary)
+              .sort((a: any, b: any) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([type, count]) => `  - ${type}: ${count} errors`)
+              .join('\n');
+            if (commonErrors) {
+              errorMsg += `\n\nMost common errors:\n${commonErrors}`;
+            }
+          }
+          
+          // Show sample errors for lecturer
+          if (data.lecturerErrors && data.lecturerErrors.length > 0 && uploadType === "lecturer") {
+            errorMsg += `\n\nSample errors (first 5):\n`;
+            data.lecturerErrors.slice(0, 5).forEach((err: any) => {
+              errorMsg += `  Row ${err.row}: ${err.field || 'unknown'} - ${err.message}\n`;
+            });
+          }
+          
+          if (data.examErrorSummary) {
+            const commonErrors = Object.entries(data.examErrorSummary)
+              .sort((a: any, b: any) => b[1] - a[1])
+              .slice(0, 3)
+              .map(([type, count]) => `  - ${type}: ${count} errors`)
+              .join('\n');
+            if (commonErrors) {
+              errorMsg += `\n\nMost common exam errors:\n${commonErrors}`;
+            }
+          }
+          
+          throw new Error(errorMsg);
+        }
+        throw new Error(data.error || "Upload failed");
+      }
+
+      const inserted = data.summary?.inserted || 0;
+      const updated = data.summary?.updated || 0;
+      const failed = data.summary?.failed || 0;
+      const uniqueStudents = data.summary?.details?.enrollments?.uniqueStudents || 0;
+      const fileType = data.fileType === "block-structured" ? " (Block-structured files detected)" : 
+                       data.fileType === "section-structured" ? " (Section-structured files detected)" : "";
+      const filesProcessed = data.filesProcessed || {};
+      
+      let successMsg = `Upload successful! Processed ${filesProcessed.examFiles || 0} exam file(s) and ${filesProcessed.enrollFiles || 0} enrollment file(s)`;
+      if (filesProcessed.lecturerFiles > 0) {
+        successMsg += ` and ${filesProcessed.lecturerFiles} lecturer file(s)`;
+      }
+      successMsg += `. Inserted: ${inserted}, Updated: ${updated}, Failed: ${failed}`;
+      if (uniqueStudents > 0) {
+        successMsg += ` | Students: ${uniqueStudents}`;
+      }
+      if (fileType) {
+        successMsg += fileType;
+      }
+      setSuccess(successMsg);
+      setDatasetName("");
+      setExamFiles([]);
+      setEnrollFiles([]);
+      setLecturerFiles([]);
+      setExamHeaders([]);
+      setEnrollHeaders([]);
+      setLecturerHeaders([]);
+      setExamMapping({});
+      setEnrollMapping({});
+      setLecturerMapping({});
+      setShowMapping(false);
+      const examInput = document.getElementById("examFile") as HTMLInputElement;
+      const enrollInput = document.getElementById("enrollFile") as HTMLInputElement;
+      if (examInput) examInput.value = "";
+      if (enrollInput) enrollInput.value = "";
+      loadDatasets();
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const isProcessing = uploading || readingHeaders;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative">
+      {/* Loading Overlay */}
+      {isProcessing && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <p className="text-gray-700 font-medium">
+              {uploading ? "Uploading files..." : "Reading file headers..."}
+            </p>
+            <p className="text-sm text-gray-500">Please wait, do not close this page</p>
+          </div>
+        </div>
+      )}
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-4">
+            <img 
+              src="/img/Qassim_University_logo.png" 
+              alt="Qassim University Logo" 
+              className="h-12 w-auto"
+            />
+            <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+            >
+              <Settings className="w-4 h-4" />
+              Search Page Settings
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center gap-2"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4">
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md mb-4">
+            {success}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Upload Form */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Upload className="w-5 h-5" />
+              Upload New Dataset
+            </h2>
+
+            <form onSubmit={handleUpload} className="space-y-4">
+              {/* Upload Type Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  What would you like to upload?
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUploadType("student");
+                      setExamFiles([]);
+                      setEnrollFiles([]);
+                      setLecturerFiles([]);
+                      setExamHeaders([]);
+                      setEnrollHeaders([]);
+                      setLecturerHeaders([]);
+                      setExamMapping({});
+                      setEnrollMapping({});
+                      setLecturerMapping({});
+                      setShowMapping(false);
+                      setExamAutoDetectSuccess(false);
+                    }}
+                    className={`px-4 py-3 border-2 rounded-md transition-all ${
+                      uploadType === "student"
+                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        : "border-gray-300 bg-white text-gray-700 hover:border-blue-300"
+                    }`}
+                    disabled={uploading || readingHeaders}
+                  >
+                    <div className="flex items-center gap-2 justify-center">
+                      <Users className="w-5 h-5" />
+                      <span className="font-medium">Student Data</span>
+                    </div>
+                    <p className="text-xs mt-1 text-gray-600">Exam schedules & enrollments</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUploadType("lecturer");
+                      setExamFiles([]);
+                      setEnrollFiles([]);
+                      setLecturerFiles([]);
+                      setExamHeaders([]);
+                      setEnrollHeaders([]);
+                      setLecturerHeaders([]);
+                      setExamMapping({});
+                      setEnrollMapping({});
+                      setLecturerMapping({});
+                      setShowMapping(false);
+                      setExamAutoDetectSuccess(false);
+                    }}
+                    className={`px-4 py-3 border-2 rounded-md transition-all ${
+                      uploadType === "lecturer"
+                        ? "border-purple-500 bg-purple-50 text-purple-700"
+                        : "border-gray-300 bg-white text-gray-700 hover:border-purple-300"
+                    }`}
+                    disabled={uploading || readingHeaders}
+                  >
+                    <div className="flex items-center gap-2 justify-center">
+                      <User className="w-5 h-5" />
+                      <span className="font-medium">Lecturer Data</span>
+                    </div>
+                    <p className="text-xs mt-1 text-gray-600">Lecturer exam schedules</p>
+                  </button>
+                </div>
+              </div>
+
+              {uploadType && (
+                <>
+                  <div>
+                    <label htmlFor="datasetName" className="block text-sm font-medium text-gray-700 mb-2">
+                      Dataset Name (e.g., "Term 1 2025")
+                    </label>
+                    <input
+                      id="datasetName"
+                      disabled={uploading || readingHeaders}
+                      type="text"
+                      value={datasetName}
+                      onChange={(e) => setDatasetName(e.target.value)}
+                      required
+                      placeholder="Term 1 2025"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    />
+                  </div>
+
+                  {/* Student Upload Fields */}
+                  {uploadType === "student" && (
+                    <>
+                      <div>
+                        <label htmlFor="examFile" className="block text-sm font-medium text-gray-700 mb-2">
+                          Exam Schedule Files (Excel) - Multiple files allowed
+                        </label>
+                        <input
+                          id="examFile"
+                          type="file"
+                          accept=".xlsx,.xls"
+                          multiple
+                          onChange={handleExamFileChange}
+                          required
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          disabled={uploading || readingHeaders}
+                        />
+                        {examFiles.length > 0 && (
+                          <div className="mt-2 text-sm text-gray-600">
+                            <span className="font-medium">{examFiles.length} file(s) selected:</span>
+                            <ul className="list-disc list-inside mt-1">
+                              {examFiles.map((file, idx) => (
+                                <li key={idx}>{file.name}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label htmlFor="enrollFile" className="block text-sm font-medium text-gray-700 mb-2">
+                          Student Enrollments Files (Excel) - Multiple files allowed
+                        </label>
+                        <input
+                          id="enrollFile"
+                          type="file"
+                          accept=".xlsx,.xls"
+                          multiple
+                          onChange={handleEnrollFileChange}
+                          required
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          disabled={uploading || readingHeaders}
+                        />
+                        {enrollFiles.length > 0 && (
+                          <div className="mt-2 text-sm text-gray-600">
+                            <span className="font-medium">{enrollFiles.length} file(s) selected:</span>
+                            <ul className="list-disc list-inside mt-1">
+                              {enrollFiles.map((file, idx) => (
+                                <li key={idx}>{file.name}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Auto-detection success message for exam file */}
+                      {examAutoDetectSuccess && examFiles.length > 0 && (
+                        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4" />
+                            <span className="text-sm font-medium">
+                              Exam Schedule File: All headers auto-detected successfully! No manual mapping needed.
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExamAutoDetectSuccess(false);
+                              if (examFiles.length > 0) {
+                                readHeaders(examFiles[0], "exam");
+                              }
+                            }}
+                            className="mt-2 text-xs text-green-700 hover:text-green-900 underline"
+                          >
+                            Click to manually adjust headers
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Lecturer Upload Fields */}
+                  {uploadType === "lecturer" && (
+                    <div>
+                      <label htmlFor="lecturerFile" className="block text-sm font-medium text-gray-700 mb-2">
+                        Lecturer Schedule Files (Excel) - Multiple files allowed
+                      </label>
+                      <input
+                        id="lecturerFile"
+                        type="file"
+                        accept=".xlsx,.xls"
+                        multiple
+                        onChange={handleLecturerFileChange}
+                        required
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                        disabled={uploading || readingHeaders}
+                      />
+                      {lecturerFiles.length > 0 && (
+                        <div className="mt-2 text-sm text-gray-600">
+                          <span className="font-medium">{lecturerFiles.length} file(s) selected:</span>
+                          <ul className="list-disc list-inside mt-1">
+                            {lecturerFiles.map((file, idx) => (
+                              <li key={idx}>{file.name}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Header Mapping Section */}
+              {showMapping && (examHeaders.length > 0 || enrollHeaders.length > 0 || lecturerHeaders.length > 0) && (
+                <div className="border-t pt-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                      <Settings className="w-4 h-4" />
+                      Map Excel Headers to Fields
+                    </div>
+                    <span className="text-xs text-gray-500 italic">
+                      ✓ Auto-detected • You can edit below
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 bg-yellow-50 border border-yellow-200 rounded p-2">
+                    <strong>Note:</strong> Headers have been auto-detected. You can change any mapping by selecting a different header from the dropdown menus below.
+                  </p>
+
+                  {/* Exam Schedule Mapping */}
+                  {examHeaders.length > 0 && (
+                    <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-medium text-gray-900">Exam Schedule File</h4>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Re-run auto-detection for exam file
+                            if (examFiles.length > 0) {
+                              readHeaders(examFiles[0], "exam");
+                            }
+                          }}
+                          className="text-xs text-blue-600 hover:text-blue-800 underline disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Reset to auto-detected values"
+                          disabled={uploading || readingHeaders}
+                        >
+                          Reset Auto-Detect
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {["course_code", "course_name", "class_no", "exam_date", "start_time", "place", "period"].map((field) => (
+                          <div key={field} className="flex items-center gap-2">
+                            <label className="text-xs text-gray-600 w-28 capitalize">
+                              {field.replace(/_/g, " ")}:
+                            </label>
+                            <select
+                              value={examMapping[field] || ""}
+                              onChange={(e) => setExamMapping({ ...examMapping, [field]: e.target.value })}
+                              className="flex-1 text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white hover:border-blue-400 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                              required
+                              disabled={uploading || readingHeaders}
+                            >
+                              <option value="">Select header...</option>
+                              {examHeaders.map((header) => (
+                                <option key={header} value={header}>
+                                  {header}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                        {/* end_time is optional */}
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs text-gray-600 w-28 capitalize">
+                            end time (optional):
+                          </label>
+                          <select
+                            value={examMapping["end_time"] || ""}
+                            onChange={(e) => setExamMapping({ ...examMapping, end_time: e.target.value })}
+                            className="flex-1 text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white hover:border-blue-400 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            disabled={uploading || readingHeaders}
+                          >
+                            <option value="">Select header (optional)...</option>
+                            {examHeaders.map((header) => (
+                              <option key={header} value={header}>
+                                {header}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {["rows", "seats"].map((field) => (
+                          <div key={field} className="flex items-center gap-2">
+                            <label className="text-xs text-gray-600 w-28 capitalize">
+                              {field} (optional):
+                            </label>
+                            <select
+                              value={examMapping[field] || ""}
+                              onChange={(e) => setExamMapping({ ...examMapping, [field]: e.target.value })}
+                              className="flex-1 text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white hover:border-blue-400 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                              disabled={uploading || readingHeaders}
+                            >
+                              <option value="">Select header (optional)...</option>
+                              {examHeaders.map((header) => (
+                                <option key={header} value={header}>
+                                  {header}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Lecturer Mapping */}
+                  {lecturerHeaders.length > 0 && (
+                    <div className="bg-purple-50 p-3 rounded-md border border-purple-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-medium text-gray-900">Lecturer Schedule File</h4>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (lecturerFiles.length > 0) {
+                              readHeaders(lecturerFiles[0], "lecturer");
+                            }
+                          }}
+                          className="text-xs text-purple-600 hover:text-purple-800 underline disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Reset to auto-detected values"
+                          disabled={uploading || readingHeaders}
+                        >
+                          Reset Auto-Detect
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {["lecturer_name", "section", "course_code", "course_name", "room", "exam_date", "exam_period", "period_start"].map((field) => (
+                          <div key={field} className="flex items-center gap-2">
+                            <label className="text-xs text-gray-600 w-28 capitalize">
+                              {field.replace(/_/g, " ")}:
+                            </label>
+                            <select
+                              value={lecturerMapping[field] || ""}
+                              onChange={(e) => setLecturerMapping({ ...lecturerMapping, [field]: e.target.value })}
+                              className="flex-1 text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white hover:border-purple-400 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                              required
+                              disabled={uploading || readingHeaders}
+                            >
+                              <option value="">Select header...</option>
+                              {lecturerHeaders.map((header) => (
+                                <option key={header} value={header}>
+                                  {header}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                        {["role", "grade", "exam_code", "number_of_students", "column", "day", "invigilator"].map((field) => (
+                          <div key={field} className="flex items-center gap-2">
+                            <label className="text-xs text-gray-600 w-28 capitalize">
+                              {field.replace(/_/g, " ")} (optional):
+                            </label>
+                            <select
+                              value={lecturerMapping[field] || ""}
+                              onChange={(e) => setLecturerMapping({ ...lecturerMapping, [field]: e.target.value })}
+                              className="flex-1 text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white hover:border-purple-400 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                              disabled={uploading || readingHeaders}
+                            >
+                              <option value="">Select header (optional)...</option>
+                              {lecturerHeaders.map((header) => (
+                                <option key={header} value={header}>
+                                  {header}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Enrollment Mapping */}
+                  {enrollHeaders.length > 0 && (
+                    <div className="bg-green-50 p-3 rounded-md border border-green-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-medium text-gray-900">Enrollments File</h4>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Re-run auto-detection for enrollment file
+                            if (enrollFiles.length > 0) {
+                              readHeaders(enrollFiles[0], "enroll");
+                            }
+                          }}
+                          className="text-xs text-green-600 hover:text-green-800 underline disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Reset to auto-detected values"
+                          disabled={uploading || readingHeaders}
+                        >
+                          Reset Auto-Detect
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {["student_id", "course_code", "class_no"].map((field) => (
+                          <div key={field} className="flex items-center gap-2">
+                            <label className="text-xs text-gray-600 w-28 capitalize">
+                              {field.replace(/_/g, " ")}:
+                            </label>
+                            <select
+                              value={enrollMapping[field] || ""}
+                              onChange={(e) => setEnrollMapping({ ...enrollMapping, [field]: e.target.value })}
+                              className="flex-1 text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500 bg-white hover:border-green-400 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                              required
+                              disabled={uploading || readingHeaders}
+                            >
+                              <option value="">Select header...</option>
+                              {enrollHeaders.map((header) => (
+                                <option key={header} value={header}>
+                                  {header}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={uploading || readingHeaders}
+                className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    Upload Dataset
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+
+          {/* Dataset List */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5" />
+                Datasets
+              </h2>
+              <div className="flex items-center gap-2">
+                {datasets.length > 0 && (
+                  <>
+                    <button
+                      onClick={handleSelectAll}
+                      className="px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center gap-1"
+                      title="Select all datasets"
+                    >
+                      {selectedDatasets.size === datasets.length ? (
+                        <CheckSquare className="w-4 h-4" />
+                      ) : (
+                        <Square className="w-4 h-4" />
+                      )}
+                      {selectedDatasets.size === datasets.length ? "Deselect All" : "Select All"}
+                    </button>
+                    {selectedDatasets.size > 0 && (
+                      <>
+                        <button
+                          onClick={handleBulkActivate}
+                          disabled={loading}
+                          className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          Activate Selected ({selectedDatasets.size})
+                        </button>
+                        <button
+                          onClick={handleBulkDeactivate}
+                          disabled={loading}
+                          className="px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 disabled:opacity-50"
+                        >
+                          Deactivate Selected ({selectedDatasets.size})
+                        </button>
+                        <button
+                          onClick={handleBulkDelete}
+                          disabled={loading}
+                          className="px-3 py-1 bg-red-800 text-white text-sm rounded-md hover:bg-red-900 disabled:opacity-50 flex items-center gap-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete Selected ({selectedDatasets.size})
+                        </button>
+                      </>
+                )}
+                  </>
+                )}
+                <button
+                  onClick={loadDatasets}
+                  disabled={loading}
+                  className="p-2 text-gray-600 hover:text-gray-900"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                </button>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="text-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
+              </div>
+            ) : datasets.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No datasets yet</p>
+            ) : (
+              <div className="space-y-2">
+                {datasets.map((dataset) => {
+                  const isExpanded = expandedDataset === dataset.id;
+                  const details = datasetDetails[dataset.id];
+                  const isLoadingDetails = loadingDetails === dataset.id;
+
+                  return (
+                    <div
+                      key={dataset.id}
+                      className={`border rounded-md ${
+                        dataset.isActive ? "border-green-500 bg-green-50" : "border-gray-200 bg-white"
+                      }`}
+                    >
+                      <div className="p-4">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-3 flex-1">
+                            <input
+                              type="checkbox"
+                              checked={selectedDatasets.has(dataset.id)}
+                              onChange={() => handleToggleSelection(dataset.id)}
+                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-medium text-gray-900">{dataset.name}</h3>
+                                {dataset.isActive && (
+                                  <span className="inline-flex items-center gap-1 text-sm text-green-700">
+                                    <CheckCircle className="w-4 h-4" />
+                                    Active
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-500 mt-1">
+                                Created: {new Date(dataset.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => loadDatasetDetails(dataset.id)}
+                              disabled={isLoadingDetails}
+                              className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200 disabled:opacity-50 flex items-center gap-1"
+                              title="View dataset details"
+                            >
+                              {isLoadingDetails ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Info className="w-4 h-4" />
+                                  {isExpanded ? (
+                                    <>
+                                      <ChevronUp className="w-4 h-4" />
+                                      Hide
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ChevronDown className="w-4 h-4" />
+                                      Details
+                                    </>
+                                  )}
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleDelete(dataset.id, dataset.name)}
+                              disabled={loading}
+                              className="px-3 py-1 bg-red-800 text-white text-sm rounded-md hover:bg-red-900 disabled:opacity-50 flex items-center gap-1"
+                              title="Delete dataset"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Dataset Details */}
+                      {isExpanded && details && (
+                        <div className="border-t bg-gray-50 p-4 space-y-4">
+                          {/* Summary */}
+                          <div className={`grid gap-4 ${details.dataset.type === "lecturer" ? "grid-cols-2 md:grid-cols-3" : "grid-cols-2 md:grid-cols-4"}`}>
+                            {details.dataset.type === "lecturer" ? (
+                              <>
+                                <div className="bg-white p-3 rounded-md border border-gray-200 text-center">
+                                  <div className="text-2xl font-bold text-blue-600">{details.summary.totalLecturerExams}</div>
+                                  <div className="text-sm text-gray-600 mt-1">Total Lecturer Exams</div>
+                                </div>
+                                <div className="bg-white p-3 rounded-md border border-gray-200 text-center">
+                                  <div className="text-2xl font-bold text-purple-600">{details.summary.uniqueLecturers}</div>
+                                  <div className="text-sm text-gray-600 mt-1">Unique Lecturers</div>
+                                </div>
+                                <div className="bg-white p-3 rounded-md border border-gray-200 text-center">
+                                  <div className="text-2xl font-bold text-orange-600">{details.summary.uniqueCourses}</div>
+                                  <div className="text-sm text-gray-600 mt-1">Unique Courses</div>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="bg-white p-3 rounded-md border border-gray-200 text-center">
+                                  <div className="text-2xl font-bold text-blue-600">{details.summary.totalExams}</div>
+                                  <div className="text-sm text-gray-600 mt-1">Total Exams</div>
+                                </div>
+                                <div className="bg-white p-3 rounded-md border border-gray-200 text-center">
+                                  <div className="text-2xl font-bold text-green-600">{details.summary.totalEnrollments}</div>
+                                  <div className="text-sm text-gray-600 mt-1">Total Enrollments</div>
+                                </div>
+                                <div className="bg-white p-3 rounded-md border border-gray-200 text-center">
+                                  <div className="text-2xl font-bold text-purple-600">{details.summary.uniqueCourses}</div>
+                                  <div className="text-sm text-gray-600 mt-1">Unique Courses</div>
+                                </div>
+                                <div className="bg-white p-3 rounded-md border border-gray-200 text-center">
+                                  <div className="text-2xl font-bold text-orange-600">{details.summary.uniqueStudents}</div>
+                                  <div className="text-sm text-gray-600 mt-1">Unique Students</div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {/* All Exams / Lecturer Exams */}
+                          {details.dataset.type === "lecturer" ? (
+                            details.lecturerExams && details.lecturerExams.length > 0 && (
+                              <div className="bg-white p-4 rounded-md border border-gray-200">
+                                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                  <FileSpreadsheet className="w-4 h-4 text-blue-600" />
+                                  All Lecturer Exams ({details.lecturerExams.length})
+                                </h4>
+                                <div className="max-h-96 overflow-y-auto">
+                                  <div className="overflow-x-auto">
+                                    <table className="min-w-full text-sm">
+                                      <thead className="bg-gray-100 sticky top-0">
+                                        <tr>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Lecturer Name</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Role</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Grade</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Exam Code</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Course Code</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Course Name</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Section</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Students</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Room</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Column</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Day</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Date</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Period</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Time</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Invigilator</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-200">
+                                        {details.lecturerExams.map((exam) => (
+                                          <tr key={exam.id} className="hover:bg-gray-50">
+                                            <td className="px-3 py-2 font-medium text-gray-900">{exam.lecturerName}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.role || "-"}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.grade || "-"}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.examCode || "-"}</td>
+                                            <td className="px-3 py-2 text-gray-700">{exam.courseCode}</td>
+                                            <td className="px-3 py-2 text-gray-700">{exam.courseName}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.section}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.numberOfStudents || "-"}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.room}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.column || "-"}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.day || "-"}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.examDate}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.examPeriod}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.periodStart}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.invigilator || "-"}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          ) : (
+                            details.exams.length > 0 && (
+                              <div className="bg-white p-4 rounded-md border border-gray-200">
+                                <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                  <FileSpreadsheet className="w-4 h-4 text-blue-600" />
+                                  All Exams ({details.exams.length})
+                                </h4>
+                                <div className="max-h-96 overflow-y-auto">
+                                  <div className="overflow-x-auto">
+                                    <table className="min-w-full text-sm">
+                                      <thead className="bg-gray-100 sticky top-0">
+                                        <tr>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Course Code</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Course Name</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Class</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Date</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Time</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Place</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Period</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Rows</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Seats</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-gray-200">
+                                        {details.exams.map((exam) => (
+                                          <tr key={exam.id} className="hover:bg-gray-50">
+                                            <td className="px-3 py-2 font-medium text-gray-900">{exam.courseCode}</td>
+                                            <td className="px-3 py-2 text-gray-700">{exam.courseName}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.classNo}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.examDate}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.startTime} - {exam.endTime}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.place}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.period}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.rows ?? "-"}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.seats ?? "-"}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          )}
+
+                          {/* All Enrollments - Only show for student datasets */}
+                          {details.dataset.type !== "lecturer" && details.enrollments.length > 0 && (
+                          <div className="bg-white p-4 rounded-md border border-gray-200">
+                            <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                              <FileSpreadsheet className="w-4 h-4 text-green-600" />
+                              All Enrollments ({details.enrollments.length})
+                            </h4>
+                            <div className="max-h-96 overflow-y-auto">
+                              <div className="overflow-x-auto">
+                                <table className="min-w-full text-sm">
+                                  <thead className="bg-gray-100 sticky top-0">
+                                    <tr>
+                                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Student ID</th>
+                                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Course Code</th>
+                                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Class/Section</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-200">
+                                    {details.enrollments.map((enroll) => (
+                                      <tr key={enroll.id} className="hover:bg-gray-50">
+                                        <td className="px-3 py-2 font-medium text-gray-900">{enroll.studentId}</td>
+                                        <td className="px-3 py-2 text-gray-700">{enroll.courseCode}</td>
+                                        <td className="px-3 py-2 text-gray-600">{enroll.classNo}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Search Page Settings Modal */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+              <h2 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
+                <Settings className="w-6 h-6" />
+                Search Page Settings
+              </h2>
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                title="Close"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {/* Student Search */}
+              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div>
+                  <h3 className="font-medium text-gray-900">Student Search Page</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Control access to the student exam schedule search page
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm font-medium ${studentSearchActive ? "text-green-600" : "text-gray-500"}`}>
+                    {studentSearchActive ? "Active" : "Inactive"}
+                  </span>
+                  <button
+                    onClick={() => updateSearchSettings("student", !studentSearchActive)}
+                    disabled={loadingSettings}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      studentSearchActive
+                        ? "bg-red-600 text-white hover:bg-red-700"
+                        : "bg-green-600 text-white hover:bg-green-700"
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {studentSearchActive ? "Deactivate" : "Activate"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Lecturer Search */}
+              <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <div>
+                  <h3 className="font-medium text-gray-900">Lecturer Search Page</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Control access to the lecturer exam schedule search page
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm font-medium ${lecturerSearchActive ? "text-green-600" : "text-gray-500"}`}>
+                    {lecturerSearchActive ? "Active" : "Inactive"}
+                  </span>
+                  <button
+                    onClick={() => updateSearchSettings("lecturer", !lecturerSearchActive)}
+                    disabled={loadingSettings}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      lecturerSearchActive
+                        ? "bg-red-600 text-white hover:bg-red-700"
+                        : "bg-green-600 text-white hover:bg-green-700"
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {lecturerSearchActive ? "Deactivate" : "Activate"}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end">
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
