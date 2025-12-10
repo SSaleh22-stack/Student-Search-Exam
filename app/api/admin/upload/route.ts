@@ -415,20 +415,25 @@ export async function POST(request: NextRequest) {
       }
       console.log(`[Upload] Exam insertion complete: ${examInserted} inserted, ${examUpdated} updated, ${failed} failed`);
 
-      // Insert enrollments in batches
+      // Insert enrollments in larger batches for better performance
       console.log(`[Upload] Processing ${enrollResult.validRows.length} enrollments in batches`);
-      const ENROLL_BATCH_SIZE = 200;
+      const ENROLL_BATCH_SIZE = 500; // Increased batch size for faster processing
       const enrollmentsToInsert = enrollResult.validRows.map(enroll => ({
         datasetId: dataset.id,
-        studentId: enroll.studentId,
-        courseCode: enroll.courseCode,
-        classNo: enroll.classNo,
+        studentId: enroll.studentId.trim(),
+        courseCode: enroll.courseCode.trim(),
+        classNo: enroll.classNo.trim(),
       }));
 
-      for (let i = 0; i < enrollmentsToInsert.length; i += ENROLL_BATCH_SIZE) {
-        const batch = enrollmentsToInsert.slice(i, i + ENROLL_BATCH_SIZE);
+      // Remove duplicates before inserting (faster than skipDuplicates for large datasets)
+      const uniqueEnrollments = Array.from(
+        new Map(enrollmentsToInsert.map(e => [`${e.datasetId}-${e.studentId}-${e.courseCode}-${e.classNo}`, e])).values()
+      );
+
+      for (let i = 0; i < uniqueEnrollments.length; i += ENROLL_BATCH_SIZE) {
+        const batch = uniqueEnrollments.slice(i, i + ENROLL_BATCH_SIZE);
         try {
-          // Use createMany with skipDuplicates for better performance
+          // Use createMany with skipDuplicates for maximum performance
           const result = await prisma.enrollment.createMany({
             data: batch,
             skipDuplicates: true,
@@ -436,18 +441,19 @@ export async function POST(request: NextRequest) {
           enrollInserted += result.count;
         } catch (err) {
           console.error("Error inserting enrollment batch:", err);
-          // Fallback to individual inserts if batch fails
-          for (const enroll of batch) {
+          // If batch fails, try smaller batches
+          const SMALL_BATCH = 100;
+          for (let j = 0; j < batch.length; j += SMALL_BATCH) {
+            const smallBatch = batch.slice(j, j + SMALL_BATCH);
             try {
-              await prisma.enrollment.create({
-                data: enroll,
+              const result = await prisma.enrollment.createMany({
+                data: smallBatch,
+                skipDuplicates: true,
               });
-              enrollInserted++;
+              enrollInserted += result.count;
             } catch (e) {
-              // Skip duplicates
-              if (!(e as any).code?.includes('P2002')) {
-                failed++;
-              }
+              console.error("Error inserting small enrollment batch:", e);
+              failed += smallBatch.length;
             }
           }
         }

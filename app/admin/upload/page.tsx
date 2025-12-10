@@ -85,6 +85,7 @@ export default function AdminUploadPage() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [uploadType, setUploadType] = useState<"student" | "lecturer" | null>(null);
@@ -832,6 +833,8 @@ No header mapping needed.`);
     }
 
     setUploading(true);
+    setUploadProgress(0);
+    setShowUploadModal(true);
     setError(null);
     setSuccess(null);
 
@@ -1021,10 +1024,21 @@ No header mapping needed.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
       setUploadProgress(0);
+      setShowUploadModal(false);
     } finally {
       setUploading(false);
-      // Reset progress after a short delay to show completion
-      setTimeout(() => setUploadProgress(0), 1000);
+      // Close modal after showing completion
+      if (uploadProgress === 100) {
+        setTimeout(() => {
+          setUploadProgress(0);
+          setShowUploadModal(false);
+        }, 1500);
+      } else {
+        setTimeout(() => {
+          setShowUploadModal(false);
+          setUploadProgress(0);
+        }, 500);
+      }
     }
   };
 
@@ -1520,21 +1534,6 @@ No header mapping needed.`);
                 </div>
               )}
 
-              {/* Progress Bar */}
-              {uploading && (
-                <div className="w-full space-y-2">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-700 font-medium">Uploading...</span>
-                    <span className="text-blue-600 font-semibold">{uploadProgress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div
-                      className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
 
               <button
                 type="submit"
@@ -2102,6 +2101,48 @@ No header mapping needed.`);
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Upload Progress Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-center mb-4">
+              <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
+              Uploading Files
+            </h3>
+            <p className="text-sm text-gray-600 text-center mb-6">
+              Please wait while we process your files...
+            </p>
+            
+            {/* Progress Bar */}
+            <div className="w-full space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-700 font-medium">Progress</span>
+                <span className="text-blue-600 font-semibold">{uploadProgress}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div
+                  className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out flex items-center justify-end pr-1"
+                  style={{ width: `${uploadProgress}%` }}
+                >
+                  {uploadProgress > 10 && (
+                    <span className="text-xs text-white font-medium">{uploadProgress}%</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-4 text-xs text-gray-500 text-center">
+              {uploadProgress < 50 && "Uploading files..."}
+              {uploadProgress >= 50 && uploadProgress < 90 && "Processing data..."}
+              {uploadProgress >= 90 && uploadProgress < 100 && "Finalizing..."}
+              {uploadProgress === 100 && "Complete!"}
+            </div>
+          </div>
         </div>
       )}
 
