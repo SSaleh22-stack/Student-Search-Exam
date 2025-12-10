@@ -486,6 +486,18 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Upload error:", error);
+    
+    // Check if it's a timeout error
+    if (error instanceof Error && (error.message.includes('timeout') || error.message.includes('TIMEOUT'))) {
+      return NextResponse.json(
+        {
+          error: "Upload timeout: File processing took too long. Please try splitting large files into smaller ones or reducing the number of rows.",
+          timeout: true,
+        },
+        { status: 504 }
+      );
+    }
+    
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Internal server error",

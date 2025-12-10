@@ -84,6 +84,7 @@ export default function AdminUploadPage() {
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [uploadType, setUploadType] = useState<"student" | "lecturer" | null>(null);
@@ -825,18 +826,66 @@ No header mapping needed.`);
         }
       }
 
-      const res = await fetch("/api/admin/upload", {
-        method: "POST",
-        body: formData,
+      // Use XMLHttpRequest for progress tracking
+      const res = await new Promise<Response>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 100);
+            setUploadProgress(percentComplete);
+          }
+        });
+        
+        // Handle completion
+        xhr.addEventListener('load', () => {
+          // Create a Response-like object
+          const response = new Response(xhr.responseText, {
+            status: xhr.status,
+            statusText: xhr.statusText,
+            headers: new Headers({
+              'content-type': xhr.getResponseHeader('content-type') || 'application/json',
+            }),
+          });
+          resolve(response);
+        });
+        
+        // Handle errors
+        xhr.addEventListener('error', () => {
+          reject(new Error('Network error'));
+        });
+        
+        xhr.addEventListener('abort', () => {
+          reject(new Error('Upload aborted'));
+        });
+        
+        // Open and send request
+        xhr.open('POST', '/api/admin/upload');
+        xhr.send(formData);
       });
 
       const data = await safeJsonParse(res);
 
       if (!res.ok) {
+        // Handle timeout errors (504 Gateway Timeout)
+        if (res.status === 504 || res.status === 408) {
+          const timeoutError = typeof data === 'string' ? data : 'Upload timeout';
+          setError(`Upload timeout: The file is too large or processing took too long. Please try:\n1. Splitting large files into smaller ones\n2. Reducing the number of rows\n3. Checking your internet connection\n\nError: ${timeoutError}`);
+          setLoading(false);
+          return;
+        }
+        
         // Handle non-JSON error responses
         if (typeof data === 'string') {
-          setError(data);
-          setLoading(false);
+          // Check if it's a timeout-related error message
+          if (data.includes('timeout') || data.includes('TIMEOUT') || data.includes('FUNCTION_INVOCATION_TIMEOUT')) {
+            setError(`Upload timeout: The file processing took too long. Please try:\n1. Splitting large files into smaller ones\n2. Reducing the number of rows\n3. Contact support if the problem persists\n\nError: ${data.substring(0, 200)}`);
+          } else {
+            setError(data);
+          }
+          setUploadProgress(0);
+          setUploading(false);
           return;
         }
         
@@ -932,8 +981,11 @@ No header mapping needed.`);
       setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
+      setUploadProgress(0);
     } finally {
       setUploading(false);
+      // Reset progress after a short delay to show completion
+      setTimeout(() => setUploadProgress(0), 1000);
     }
   };
 
@@ -1429,6 +1481,22 @@ No header mapping needed.`);
                 </div>
               )}
 
+              {/* Progress Bar */}
+              {uploading && (
+                <div className="w-full space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-700 font-medium">Uploading...</span>
+                    <span className="text-blue-600 font-semibold">{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                    <div
+                      className="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <button
                 type="submit"
                 disabled={uploading || readingHeaders}
@@ -1437,12 +1505,12 @@ No header mapping needed.`);
                 {uploading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    جاري الرفع...
+                    Uploading...
                   </>
                 ) : (
                   <>
                     <Upload className="w-4 h-4" />
-                    رفع مجموعة البيانات
+                    Upload Dataset
                   </>
                 )}
               </button>

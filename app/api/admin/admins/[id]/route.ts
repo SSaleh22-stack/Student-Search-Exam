@@ -45,22 +45,22 @@ export async function PUT(
     const updateData: any = {};
     
     if (username !== undefined) {
-      // Check if new username is already taken by another admin
-      const usernameTaken = await prisma.admin.findFirst({
-        where: {
-          username,
-          NOT: { id },
-        },
-      });
+      // Normalize username to lowercase for case-insensitive storage
+      const normalizedUsername = username.toLowerCase().trim();
+      
+      // Check if new username is already taken by another admin (case-insensitive)
+      const usernameTaken = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM "Admin" WHERE LOWER(username) = LOWER(${normalizedUsername}) AND id != ${id} LIMIT 1
+      `;
 
-      if (usernameTaken) {
+      if (usernameTaken && usernameTaken.length > 0) {
         return NextResponse.json(
           { error: "Username already exists" },
           { status: 400 }
         );
       }
 
-      updateData.username = username;
+      updateData.username = normalizedUsername;
     }
 
     if (password !== undefined && password !== "") {

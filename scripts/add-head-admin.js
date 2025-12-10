@@ -20,19 +20,23 @@ async function addHeadAdmin() {
     process.exit(1);
   }
 
-  try {
-    // Check if admin already exists
-    const existingAdmin = await prisma.admin.findUnique({
-      where: { username },
-    });
+  // Normalize username to lowercase for case-insensitive storage
+  const normalizedUsername = username.toLowerCase().trim();
 
-    if (existingAdmin) {
+  try {
+    // Check if admin already exists (case-insensitive)
+    const existingAdmin = await prisma.$queryRaw`
+      SELECT * FROM "Admin" WHERE LOWER(username) = LOWER(${normalizedUsername}) LIMIT 1
+    `;
+
+    if (existingAdmin && existingAdmin.length > 0) {
+      const existing = existingAdmin[0];
       console.log('Admin already exists. Updating to head admin...');
       
       // Update to head admin and set new password
       const passwordHash = await bcrypt.hash(password, 10);
       const admin = await prisma.admin.update({
-        where: { username },
+        where: { id: existing.id },
         data: {
           passwordHash,
           isHeadAdmin: true,
@@ -61,10 +65,10 @@ async function addHeadAdmin() {
       // Hash password
       const passwordHash = await bcrypt.hash(password, 10);
 
-      // Create head admin
+      // Create head admin with normalized username
       const admin = await prisma.admin.create({
         data: {
-          username,
+          username: normalizedUsername,
           passwordHash,
           isHeadAdmin: true,
         },

@@ -10,23 +10,34 @@ export interface AdminInfo {
 
 export async function verifyAdmin(username: string, password: string): Promise<AdminInfo | null> {
   try {
-    const admin = await prisma.admin.findUnique({
-      where: { username },
-    });
-
-    if (!admin) {
+    // Normalize username to lowercase for case-insensitive lookup
+    const normalizedUsername = username.toLowerCase().trim();
+    
+    // Use raw query for case-insensitive search (works with PostgreSQL)
+    const admin = await prisma.$queryRaw<Array<{
+      id: string;
+      username: string;
+      passwordHash: string;
+      isHeadAdmin: boolean;
+    }>>`
+      SELECT * FROM "Admin" WHERE LOWER(username) = LOWER(${normalizedUsername}) LIMIT 1
+    `;
+    
+    if (!admin || admin.length === 0) {
       return null;
     }
+    
+    const adminRecord = admin[0];
 
-    const isValid = await bcrypt.compare(password, admin.passwordHash);
+    const isValid = await bcrypt.compare(password, adminRecord.passwordHash);
     if (!isValid) {
       return null;
     }
 
     return {
-      id: admin.id,
-      username: admin.username,
-      isHeadAdmin: admin.isHeadAdmin,
+      id: adminRecord.id,
+      username: adminRecord.username,
+      isHeadAdmin: adminRecord.isHeadAdmin,
     };
   } catch (error) {
     console.error("Error verifying admin:", error);

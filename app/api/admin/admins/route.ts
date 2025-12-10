@@ -57,12 +57,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if username already exists
-    const existingAdmin = await prisma.admin.findUnique({
-      where: { username },
-    });
+    // Normalize username to lowercase for case-insensitive storage
+    const normalizedUsername = username.toLowerCase().trim();
 
-    if (existingAdmin) {
+    // Check if username already exists (case-insensitive)
+    const existingAdmin = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM "Admin" WHERE LOWER(username) = LOWER(${normalizedUsername}) LIMIT 1
+    `;
+
+    if (existingAdmin && existingAdmin.length > 0) {
       return NextResponse.json(
         { error: "Username already exists" },
         { status: 400 }
@@ -72,10 +75,10 @@ export async function POST(request: NextRequest) {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create admin
+    // Create admin with normalized username
     const admin = await prisma.admin.create({
       data: {
-        username,
+        username: normalizedUsername,
         passwordHash,
         isHeadAdmin: isHeadAdmin === true,
       },
