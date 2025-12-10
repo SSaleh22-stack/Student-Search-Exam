@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Upload, FileSpreadsheet, CheckCircle, XCircle, Loader2, LogOut, RefreshCw, Settings, Info, ChevronDown, ChevronUp, User, Users, X, Trash2, CheckSquare, Square } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle, XCircle, Loader2, LogOut, RefreshCw, Settings, Info, ChevronDown, ChevronUp, User, Users, X, Trash2, CheckSquare, Square, Shield, Plus, Edit2 } from "lucide-react";
+import { safeJsonParse } from "@/lib/utils";
 
 interface Dataset {
   id: string;
@@ -115,6 +116,19 @@ export default function AdminUploadPage() {
   
   // Dataset selection
   const [selectedDatasets, setSelectedDatasets] = useState<Set<string>>(new Set());
+  
+  // Admin management (head admin only)
+  const [currentAdmin, setCurrentAdmin] = useState<{ username: string; isHeadAdmin: boolean } | null>(null);
+  const [admins, setAdmins] = useState<any[]>([]);
+  const [showAdminManagement, setShowAdminManagement] = useState(false);
+  const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
+  const [newAdminUsername, setNewAdminUsername] = useState("");
+  const [newAdminPassword, setNewAdminPassword] = useState("");
+  const [newAdminIsHead, setNewAdminIsHead] = useState(false);
+  const [editingAdmin, setEditingAdmin] = useState<string | null>(null);
+  const [editAdminUsername, setEditAdminUsername] = useState("");
+  const [editAdminPassword, setEditAdminPassword] = useState("");
+  const [editAdminIsHead, setEditAdminIsHead] = useState(false);
 
   const checkAuth = useCallback(async () => {
     try {
@@ -131,13 +145,152 @@ export default function AdminUploadPage() {
     checkAuth();
     loadDatasets();
     loadSettings();
+    loadCurrentAdmin();
   }, [checkAuth]);
+
+  const loadCurrentAdmin = async () => {
+    try {
+      const res = await fetch("/api/admin/check");
+      if (res.ok) {
+        const data = await safeJsonParse(res);
+        if (data.authenticated && data.admin) {
+          setCurrentAdmin(data.admin);
+          if (data.admin.isHeadAdmin && showAdminManagement) {
+            loadAdmins();
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load admin info:", err);
+    }
+  };
+
+  const loadAdmins = async () => {
+    try {
+      const res = await fetch("/api/admin/admins");
+      if (res.ok) {
+        const data = await safeJsonParse(res);
+        setAdmins(data.admins || []);
+      } else {
+        const errorData = await safeJsonParse(res);
+        setError(errorData.error || "Failed to load admins");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load admins");
+    }
+  };
+
+  const handleCreateAdmin = async () => {
+    if (!newAdminUsername.trim() || !newAdminPassword.trim()) {
+      setError("Username and password are required");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/admins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: newAdminUsername.trim(),
+          password: newAdminPassword,
+          isHeadAdmin: newAdminIsHead,
+        }),
+      });
+
+      const data = await safeJsonParse(res);
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to create admin");
+      }
+
+      setSuccess(`Admin "${newAdminUsername}" created successfully`);
+      setNewAdminUsername("");
+      setNewAdminPassword("");
+      setNewAdminIsHead(false);
+      setShowCreateAdminModal(false);
+      loadAdmins();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create admin");
+    }
+  };
+
+  const handleEditAdmin = async (adminId: string) => {
+    if (!editAdminUsername.trim()) {
+      setError("Username is required");
+      return;
+    }
+
+    try {
+      const updateData: any = {
+        username: editAdminUsername.trim(),
+        isHeadAdmin: editAdminIsHead,
+      };
+
+      if (editAdminPassword.trim()) {
+        updateData.password = editAdminPassword;
+      }
+
+      const res = await fetch(`/api/admin/admins/${adminId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+      });
+
+      const data = await safeJsonParse(res);
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update admin");
+      }
+
+      setSuccess("Admin updated successfully");
+      setEditingAdmin(null);
+      setEditAdminUsername("");
+      setEditAdminPassword("");
+      setEditAdminIsHead(false);
+      loadAdmins();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update admin");
+    }
+  };
+
+  const handleDeleteAdmin = async (adminId: string, username: string) => {
+    if (!confirm(`Are you sure you want to delete admin "${username}"?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/admins/${adminId}`, {
+        method: "DELETE",
+      });
+
+      const data = await safeJsonParse(res);
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to delete admin");
+      }
+
+      setSuccess(`Admin "${username}" deleted successfully`);
+      loadAdmins();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete admin");
+    }
+  };
+
+  const startEditAdmin = (admin: any) => {
+    setEditingAdmin(admin.id);
+    setEditAdminUsername(admin.username);
+    setEditAdminPassword("");
+    setEditAdminIsHead(admin.isHeadAdmin);
+  };
 
   const loadSettings = async () => {
     try {
       const res = await fetch("/api/admin/settings");
       if (res.ok) {
-        const data = await res.json();
+        const data = await safeJsonParse(res);
         setStudentSearchActive(data.studentSearchActive ?? true);
         setLecturerSearchActive(data.lecturerSearchActive ?? true);
       }
@@ -162,7 +315,7 @@ export default function AdminUploadPage() {
         throw new Error("فشل تحديث الإعدادات");
       }
 
-      const data = await res.json();
+      const data = await safeJsonParse(res);
       setStudentSearchActive(data.studentSearchActive);
       setLecturerSearchActive(data.lecturerSearchActive);
       setSuccess(`تم ${isActive ? "تفعيل" : "إلغاء تفعيل"} صفحة البحث ${type === "student" ? "للطلاب" : "للمحاضرين"} بنجاح`);
@@ -179,7 +332,7 @@ export default function AdminUploadPage() {
     try {
       const res = await fetch("/api/admin/datasets");
       if (res.ok) {
-        const data = await res.json();
+        const data = await safeJsonParse(res);
         setDatasets(data.datasets || []);
       }
     } catch (err) {
@@ -346,7 +499,7 @@ export default function AdminUploadPage() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
+        const data = await safeJsonParse(res);
         throw new Error(data.error || "Failed to delete dataset");
       }
 
@@ -380,7 +533,7 @@ export default function AdminUploadPage() {
     try {
       const res = await fetch(`/api/admin/dataset-details?datasetId=${datasetId}`);
       if (res.ok) {
-        const data = await res.json();
+        const data = await safeJsonParse(res);
         setDatasetDetails((prev) => ({ ...prev, [datasetId]: data }));
         setExpandedDataset(datasetId);
       } else {
@@ -409,7 +562,7 @@ export default function AdminUploadPage() {
         });
         
         if (structureRes.ok) {
-          const structureData = await structureRes.json();
+          const structureData = await safeJsonParse(structureRes);
           if (structureData.isBlockStructure) {
             // Block-structured file - no header mapping needed
             setShowMapping(false);
@@ -444,10 +597,11 @@ No header mapping needed.`);
       });
 
       if (!res.ok) {
-        throw new Error("Failed to read headers");
+        const errorData = await safeJsonParse(res);
+        throw new Error(typeof errorData === 'string' ? errorData : errorData.error || "Failed to read headers");
       }
 
-      const data = await res.json();
+      const data = await safeJsonParse(res);
       
       if (fileType === "exam") {
         setExamHeaders(data.headers);
@@ -519,7 +673,7 @@ No header mapping needed.`);
         });
         
         if (checkRes.ok) {
-          const checkData = await checkRes.json();
+          const checkData = await safeJsonParse(checkRes);
           if (checkData.canAutoDetect) {
             // Auto-detection will work, set mapping and don't show UI
             setExamMapping(checkData.mapping);
@@ -606,7 +760,7 @@ No header mapping needed.`);
           body: checkFormData,
         });
         if (structureRes.ok) {
-          const structureData = await structureRes.json();
+          const structureData = await safeJsonParse(structureRes);
           isBlockStructured = structureData.isBlockStructure;
           isSectionStructured = structureData.isSectionStructure || false;
         }
@@ -676,10 +830,17 @@ No header mapping needed.`);
         body: formData,
       });
 
-      const data = await res.json();
+      const data = await safeJsonParse(res);
 
       if (!res.ok) {
-        if (data.examErrors || data.enrollErrors || data.lecturerErrors) {
+        // Handle non-JSON error responses
+        if (typeof data === 'string') {
+          setError(data);
+          setLoading(false);
+          return;
+        }
+        
+        if (data && (data.examErrors || data.enrollErrors || data.lecturerErrors)) {
           const examErrCount = data.totalExamErrors || data.examErrors?.length || 0;
           const enrollErrCount = data.totalEnrollErrors || data.enrollErrors?.length || 0;
           const lecturerErrCount = data.totalLecturerErrors || data.lecturerErrors?.length || 0;
@@ -727,7 +888,9 @@ No header mapping needed.`);
           
           throw new Error(errorMsg);
         }
-        throw new Error(data.error || "Upload failed");
+        // Handle error response (could be string or object)
+        const errorMessage = typeof data === 'string' ? data : (data?.error || "Upload failed");
+        throw new Error(errorMessage);
       }
 
       const inserted = data.summary?.inserted || 0;
@@ -803,12 +966,26 @@ No header mapping needed.`);
             <h1 className="text-3xl font-bold text-gray-900">لوحة التحكم</h1>
           </div>
           <div className="flex items-center gap-3">
+            {currentAdmin?.isHeadAdmin && (
+              <button
+                onClick={() => {
+                  setShowAdminManagement(!showAdminManagement);
+                  if (!showAdminManagement) {
+                    loadAdmins();
+                  }
+                }}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2"
+              >
+                <Shield className="w-4 h-4" />
+                إدارة المسؤولين
+              </button>
+            )}
             <button
               onClick={() => setShowSettingsModal(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
             >
               <Settings className="w-4 h-4" />
-              Search Page Settings
+              إعدادات صفحات البحث
             </button>
             <button
               onClick={handleLogout}
@@ -1677,6 +1854,214 @@ No header mapping needed.`);
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Management Section (Head Admin Only) */}
+      {currentAdmin?.isHeadAdmin && showAdminManagement && (
+        <div className="mt-6 bg-white rounded-lg shadow-lg p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              إدارة المسؤولين
+            </h2>
+            <button
+              onClick={() => {
+                setShowCreateAdminModal(true);
+                setNewAdminUsername("");
+                setNewAdminPassword("");
+                setNewAdminIsHead(false);
+              }}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              إضافة مسؤول جديد
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {admins.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">لا توجد حسابات مسؤولين</p>
+            ) : (
+              admins.map((admin) => (
+                <div
+                  key={admin.id}
+                  className="border rounded-md p-4 flex justify-between items-center"
+                >
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900">{admin.username}</span>
+                        {admin.isHeadAdmin && (
+                          <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
+                            رئيس المسؤولين
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500">
+                        تم الإنشاء: {new Date(admin.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {editingAdmin === admin.id ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditAdmin(admin.id)}
+                          className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                        >
+                          حفظ
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingAdmin(null);
+                            setEditAdminUsername("");
+                            setEditAdminPassword("");
+                            setEditAdminIsHead(false);
+                          }}
+                          className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
+                        >
+                          إلغاء
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => startEditAdmin(admin)}
+                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 flex items-center gap-1 text-sm"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                          تعديل
+                        </button>
+                        {admin.username !== currentAdmin?.username && (
+                          <button
+                            onClick={() => handleDeleteAdmin(admin.id, admin.username)}
+                            className="px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200 flex items-center gap-1 text-sm"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            حذف
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Inline Edit Form */}
+          {editingAdmin && admins.find(a => a.id === editingAdmin) && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <h3 className="font-medium text-gray-900 mb-3">تعديل المسؤول</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    اسم المستخدم
+                  </label>
+                  <input
+                    type="text"
+                    value={editAdminUsername}
+                    onChange={(e) => setEditAdminUsername(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    كلمة المرور الجديدة (اتركها فارغة للاحتفاظ بالقديمة)
+                  </label>
+                  <input
+                    type="password"
+                    value={editAdminPassword}
+                    onChange={(e) => setEditAdminPassword(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="أدخل كلمة مرور جديدة"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="editAdminIsHead"
+                    checked={editAdminIsHead}
+                    onChange={(e) => setEditAdminIsHead(e.target.checked)}
+                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                  />
+                  <label htmlFor="editAdminIsHead" className="text-sm text-gray-700">
+                    رئيس المسؤولين
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Create Admin Modal */}
+      {showCreateAdminModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">إضافة مسؤول جديد</h3>
+              <button
+                onClick={() => setShowCreateAdminModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  اسم المستخدم
+                </label>
+                <input
+                  type="text"
+                  value={newAdminUsername}
+                  onChange={(e) => setNewAdminUsername(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="أدخل اسم المستخدم"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  كلمة المرور
+                </label>
+                <input
+                  type="password"
+                  value={newAdminPassword}
+                  onChange={(e) => setNewAdminPassword(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="أدخل كلمة المرور"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="newAdminIsHead"
+                  checked={newAdminIsHead}
+                  onChange={(e) => setNewAdminIsHead(e.target.checked)}
+                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                />
+                <label htmlFor="newAdminIsHead" className="text-sm text-gray-700">
+                  رئيس المسؤولين
+                </label>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCreateAdmin}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                >
+                  إنشاء
+                </button>
+                <button
+                  onClick={() => setShowCreateAdminModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                >
+                  إلغاء
+                </button>
+              </div>
             </div>
           </div>
         </div>

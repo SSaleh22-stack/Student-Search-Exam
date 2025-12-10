@@ -47,9 +47,11 @@ Create a `.env` file in the root directory:
 # See ONLINE_DATABASE_SETUP.md for detailed setup instructions
 DATABASE_URL="postgresql://user:password@host:5432/database?schema=public"
 
-# Admin Credentials (optional - defaults to admin/admin)
-ADMIN_USERNAME="admin"
-ADMIN_PASSWORD_HASH="<bcrypt-hashed-password>"
+# Head Admin Credentials (for initial setup script)
+# Used by scripts/add-head-admin.js to create the first head admin account
+# IMPORTANT: Never commit your .env file to version control
+HEAD_ADMIN_USERNAME="your_username_here"
+HEAD_ADMIN_PASSWORD="your_secure_password_here"
 ```
 
 **For Local PostgreSQL:**
@@ -57,9 +59,9 @@ ADMIN_PASSWORD_HASH="<bcrypt-hashed-password>"
 # Local PostgreSQL Database
 DATABASE_URL="postgresql://user:password@localhost:5432/exam_schedule?schema=public"
 
-# Admin Credentials (optional - defaults to admin/admin)
-ADMIN_USERNAME="admin"
-ADMIN_PASSWORD_HASH="<bcrypt-hashed-password>"
+# Head Admin Credentials (for initial setup script)
+HEAD_ADMIN_USERNAME="your_username_here"
+HEAD_ADMIN_PASSWORD="your_secure_password_here"
 ```
 
 **For MySQL (XAMPP):**
@@ -67,14 +69,15 @@ ADMIN_PASSWORD_HASH="<bcrypt-hashed-password>"
 # Database (XAMPP MySQL - default no password)
 DATABASE_URL="mysql://root@localhost:3306/exam_schedule?schema=public"
 
-# Admin Credentials (optional - defaults to admin/admin)
-ADMIN_USERNAME="admin"
-ADMIN_PASSWORD_HASH="<bcrypt-hashed-password>"
+# Head Admin Credentials (for initial setup script)
+HEAD_ADMIN_USERNAME="your_username_here"
+HEAD_ADMIN_PASSWORD="your_secure_password_here"
 ```
 
-**For production, generate a password hash:**
+**⚠️ Security Note:** Admin accounts are now stored in the database. To create the first head admin account, use the setup script:
 ```bash
-node -e "console.log(require('bcryptjs').hashSync('your-password', 10))"
+# Make sure HEAD_ADMIN_USERNAME and HEAD_ADMIN_PASSWORD are set in your .env file
+node scripts/add-head-admin.js
 ```
 
 ### 3. Set Up Database
@@ -92,6 +95,10 @@ npx prisma generate
 
 # Push schema to database
 npx prisma db push
+
+# Create the first head admin account
+# (Make sure HEAD_ADMIN_USERNAME and HEAD_ADMIN_PASSWORD are set in .env)
+node scripts/add-head-admin.js
 ```
 
 # (Optional) Open Prisma Studio to view data
@@ -117,11 +124,12 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ### For Administrators
 
 1. Navigate to `/admin`
-2. Login with admin credentials (default: `admin`/`admin`)
+2. Login with your admin credentials (created via `scripts/add-head-admin.js`)
 3. Go to `/admin/upload` to:
    - Upload Excel files (ExamSchedule.xlsx and StudentEnrollments.xlsx)
    - View and manage datasets
    - Activate a dataset
+   - Manage admin accounts (head admin only)
 
 ### Excel File Format
 
