@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkSession } from "@/lib/auth";
 import ExcelJS from "exceljs";
 
+export const dynamic = 'force-dynamic';
+
 const normalizeHeader = (header: string): string => {
   return header.trim().toLowerCase().replace(/\s+/g, "_");
 };

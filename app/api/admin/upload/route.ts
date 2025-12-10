@@ -8,6 +8,8 @@ import { parseEnrollmentsFromSections } from "@/lib/excel/parseEnrollSections";
 import { detectFileStructure } from "@/lib/excel/detectStructure";
 import { parseLecturerSchedule } from "@/lib/excel/parseLecturer";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const isAuthenticated = await checkSession();

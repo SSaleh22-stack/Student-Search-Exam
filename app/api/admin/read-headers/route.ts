@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkSession } from "@/lib/auth";
 import ExcelJS from "exceljs";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const isAuthenticated = await checkSession();

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkSession } from "@/lib/auth";
 import { detectFileStructure } from "@/lib/excel/detectStructure";
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const isAuthenticated = await checkSession();
