@@ -1778,21 +1778,21 @@ No header mapping needed.`);
                                     <table className="min-w-full text-sm">
                                       <thead className="bg-gray-100 sticky top-0">
                                         <tr>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Lecturer Name</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Role</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Grade</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Exam Code</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Course Code</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Course Name</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Section</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">الطلاب</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Room</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Column</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Day</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Date</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Period</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Time</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Invigilator</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">اسم المحاضر</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">الدور</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">الدرجة</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">رمز الامتحان</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">رمز المقرر</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">اسم المقرر</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">الشعبة</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">الطلاب</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">القاعة</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">العمود</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">اليوم</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">التاريخ</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">الفترة</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">الوقت</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">المراقب</th>
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-gray-200">
@@ -1833,15 +1833,15 @@ No header mapping needed.`);
                                     <table className="min-w-full text-sm">
                                       <thead className="bg-gray-100 sticky top-0">
                                         <tr>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Course Code</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Course Name</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Class</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Date</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Time</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Place</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Period</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Rows</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Seats</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">رمز المقرر</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">اسم المقرر</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">الفصل</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">التاريخ</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">الوقت</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">المكان</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">الفترة</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">الصفوف</th>
+                                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">المقاعد</th>
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-gray-200">
@@ -1878,9 +1878,9 @@ No header mapping needed.`);
                                 <table className="min-w-full text-sm">
                                   <thead className="bg-gray-100 sticky top-0">
                                     <tr>
-                                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Student ID</th>
-                                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Course Code</th>
-                                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Class/Section</th>
+                                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">رقم الطالب</th>
+                                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">رمز المقرر</th>
+                                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-700">الفصل/الشعبة</th>
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-gray-200">
@@ -1929,9 +1929,9 @@ No header mapping needed.`);
               {/* Student Search */}
               <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <div>
-                  <h3 className="font-medium text-gray-900">Student Search Page</h3>
+                  <h3 className="font-medium text-gray-900">صفحة بحث الطلاب</h3>
                   <p className="text-sm text-gray-600 mt-1">
-                    Control access to the student exam schedule search page
+                    التحكم في الوصول إلى صفحة البحث عن جداول امتحانات الطلاب
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -1955,9 +1955,9 @@ No header mapping needed.`);
               {/* Lecturer Search */}
               <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
                 <div>
-                  <h3 className="font-medium text-gray-900">Lecturer Search Page</h3>
+                  <h3 className="font-medium text-gray-900">صفحة بحث المحاضرين</h3>
                   <p className="text-sm text-gray-600 mt-1">
-                    Control access to the lecturer exam schedule search page
+                    التحكم في الوصول إلى صفحة البحث عن جداول امتحانات المحاضرين
                   </p>
                 </div>
                 <div className="flex items-center gap-3">

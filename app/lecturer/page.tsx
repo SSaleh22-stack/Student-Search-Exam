@@ -230,7 +230,7 @@ export default function LecturerPage() {
                 <button
                   onClick={handleCopy}
                   className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center justify-center gap-2 transition-colors"
-                  title="Copy schedule"
+                  title="نسخ الجدول"
                 >
                   {copied ? (
                     <>
@@ -247,7 +247,7 @@ export default function LecturerPage() {
                 <button
                   onClick={handlePrint}
                   className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center justify-center gap-2 transition-colors print:hidden"
-                  title="Print schedule"
+                  title="طباعة الجدول"
                 >
                   <Printer className="w-4 h-4" />
                   طباعة

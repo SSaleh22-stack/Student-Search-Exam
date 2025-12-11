@@ -3,6 +3,23 @@ import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
+  // Check if student search is active
+  try {
+    const settings = await prisma.settings.findUnique({
+      where: { id: "settings" },
+    });
+
+    if (settings && !settings.studentSearchActive) {
+      return NextResponse.json(
+        { error: "Student search is currently disabled" },
+        { status: 403 }
+      );
+    }
+  } catch (error) {
+    console.error("Error checking student search settings:", error);
+    // Continue if settings check fails (for backward compatibility)
+  }
+
   // Rate limiting
   const clientId = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
   const rateLimit = checkRateLimit(`student-lookup-${clientId}`);
