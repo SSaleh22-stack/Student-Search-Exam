@@ -12,6 +12,8 @@ interface Dataset {
   createdAt: string;
   isActive: boolean;
   type?: string;
+  activateDate?: string | null;
+  activateTime?: string | null;
 }
 
 interface HeaderMapping {
@@ -120,6 +122,12 @@ export default function AdminUploadPage() {
   
   // Dataset selection
   const [selectedDatasets, setSelectedDatasets] = useState<Set<string>>(new Set());
+  
+  // Scheduled activation modal
+  const [showActivateModal, setShowActivateModal] = useState(false);
+  const [activateDate, setActivateDate] = useState("");
+  const [activateTime, setActivateTime] = useState("");
+  const [scheduleActivation, setScheduleActivation] = useState(false);
   
   // Admin management (head admin only)
   const [currentAdmin, setCurrentAdmin] = useState<{ username: string; name?: string; isHeadAdmin: boolean; canManageSettings?: boolean } | null>(null);
@@ -483,15 +491,54 @@ export default function AdminUploadPage() {
       return;
     }
 
+    // Show modal to choose immediate or scheduled activation
+    setShowActivateModal(true);
+    setScheduleActivation(false);
+    setActivateDate("");
+    setActivateTime("");
+  };
+
+  const confirmActivate = async () => {
     setLoading(true);
     setError(null);
     try {
+      const activateData: any = {};
+      
+      // If scheduling, validate and include date/time
+      if (scheduleActivation) {
+        if (!activateDate || !activateTime) {
+          setError("يرجى إدخال التاريخ والوقت للتفعيل المجدول");
+          setLoading(false);
+          return;
+        }
+        
+        // Validate date format
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(activateDate)) {
+          setError("تنسيق التاريخ غير صحيح. استخدم YYYY-MM-DD");
+          setLoading(false);
+          return;
+        }
+        
+        // Validate time format
+        if (!/^\d{2}:\d{2}$/.test(activateTime)) {
+          setError("تنسيق الوقت غير صحيح. استخدم HH:MM");
+          setLoading(false);
+          return;
+        }
+        
+        activateData.activateDate = activateDate;
+        activateData.activateTime = activateTime;
+      }
+
       const results = await Promise.allSettled(
         Array.from(selectedDatasets).map(datasetId =>
           fetch("/api/admin/activate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ datasetId }),
+            body: JSON.stringify({ 
+              datasetId,
+              ...activateData
+            }),
           })
         )
       );
@@ -501,8 +548,17 @@ export default function AdminUploadPage() {
         throw new Error(`فشل تفعيل ${failed.length} مجموعة بيانات`);
       }
 
-      setSuccess(`تم تفعيل ${selectedDatasets.size} مجموعة بيانات بنجاح`);
+      if (scheduleActivation) {
+        setSuccess(`تم جدولة تفعيل ${selectedDatasets.size} مجموعة بيانات في ${activateDate} ${activateTime}`);
+      } else {
+        setSuccess(`تم تفعيل ${selectedDatasets.size} مجموعة بيانات بنجاح`);
+      }
+      
       setSelectedDatasets(new Set());
+      setShowActivateModal(false);
+      setScheduleActivation(false);
+      setActivateDate("");
+      setActivateTime("");
       loadDatasets();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -1988,6 +2044,11 @@ No header mapping needed.`);
                               </div>
                               <p className="text-sm text-gray-500 mt-1">
                                 تم الإنشاء: {new Date(dataset.createdAt).toLocaleString('ar-SA', { dateStyle: 'short', timeStyle: 'short' })}
+                                {dataset.activateDate && dataset.activateTime && !dataset.isActive && (
+                                  <span className="ml-2 text-blue-600">
+                                    | مجدول للتفعيل: {dataset.activateDate} {dataset.activateTime}
+                                  </span>
+                                )}
                               </p>
                             </div>
                           </div>
@@ -2698,6 +2759,93 @@ No header mapping needed.`);
                 </button>
                 <button
                   onClick={() => setShowCreateAdminModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Activation Modal */}
+      {showActivateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-900">
+                تفعيل مجموعات البيانات
+              </h2>
+              <button
+                onClick={() => {
+                  setShowActivateModal(false);
+                  setScheduleActivation(false);
+                  setActivateDate("");
+                  setActivateTime("");
+                }}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="scheduleActivation"
+                  checked={scheduleActivation}
+                  onChange={(e) => setScheduleActivation(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="scheduleActivation" className="text-sm text-gray-700">
+                  جدولة التفعيل (تاريخ ووقت)
+                </label>
+              </div>
+              
+              {scheduleActivation && (
+                <div className="space-y-4 pt-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      تاريخ التفعيل (YYYY-MM-DD)
+                    </label>
+                    <input
+                      type="date"
+                      value={activateDate}
+                      onChange={(e) => setActivateDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      وقت التفعيل (HH:MM)
+                    </label>
+                    <input
+                      type="time"
+                      value={activateTime}
+                      onChange={(e) => setActivateTime(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex gap-2 pt-4">
+                <button
+                  onClick={confirmActivate}
+                  disabled={loading || (scheduleActivation && (!activateDate || !activateTime))}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {scheduleActivation ? "جدولة التفعيل" : "تفعيل الآن"}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowActivateModal(false);
+                    setScheduleActivation(false);
+                    setActivateDate("");
+                    setActivateTime("");
+                  }}
                   className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
                 >
                   إلغاء

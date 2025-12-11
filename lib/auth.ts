@@ -51,11 +51,14 @@ export async function verifyAdmin(username: string, password: string): Promise<A
 
 export async function createSession(adminId: string) {
   const cookieStore = await cookies();
-  cookieStore.set("admin_session", adminId, {
+  const now = Date.now();
+  // Store adminId and timestamp in JSON format
+  const sessionData = JSON.stringify({ adminId, timestamp: now });
+  cookieStore.set("admin_session", sessionData, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    // No maxAge - session cookie expires when browser closes
   });
 }
 
@@ -73,8 +76,56 @@ export async function getCurrentAdmin(): Promise<AdminInfo | null> {
       return null;
     }
 
+    // Parse session data (contains adminId and timestamp)
+    let sessionData: { adminId: string; timestamp: number };
+    try {
+      sessionData = JSON.parse(session.value);
+    } catch {
+      // Legacy format - just adminId string
+      // Try to use it as-is for backward compatibility
+      const admin = await prisma.admin.findUnique({
+        where: { id: session.value },
+        select: {
+          id: true,
+          username: true,
+          name: true,
+          isHeadAdmin: true,
+          canManageSettings: true,
+        },
+      });
+
+      if (!admin) {
+        return null;
+      }
+
+      // Update to new format with current timestamp
+      await createSession(admin.id);
+      
+      return {
+        id: admin.id,
+        username: admin.username,
+        name: admin.name || undefined,
+        isHeadAdmin: admin.isHeadAdmin,
+        canManageSettings: admin.canManageSettings || undefined,
+      };
+    }
+
+    // Check if 45 minutes (45 * 60 * 1000 ms) have passed since last activity
+    const INACTIVITY_TIMEOUT = 45 * 60 * 1000; // 45 minutes in milliseconds
+    const now = Date.now();
+    const timeSinceLastActivity = now - sessionData.timestamp;
+
+    if (timeSinceLastActivity > INACTIVITY_TIMEOUT) {
+      // Session expired due to inactivity
+      await deleteSession();
+      return null;
+    }
+
+    // Session is still valid - update timestamp to reset the 45-minute timer
+    await createSession(sessionData.adminId);
+
     const admin = await prisma.admin.findUnique({
-      where: { id: session.value },
+      where: { id: sessionData.adminId },
       select: {
         id: true,
         username: true,
