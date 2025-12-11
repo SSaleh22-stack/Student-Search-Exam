@@ -129,7 +129,6 @@ export default function AdminUploadPage() {
   const [newAdminIsHead, setNewAdminIsHead] = useState(false);
   const [newAdminCanUpload, setNewAdminCanUpload] = useState(true);
   const [newAdminCanManageDatasets, setNewAdminCanManageDatasets] = useState(true);
-  const [newAdminCanManageAdmins, setNewAdminCanManageAdmins] = useState(false);
   const [newAdminCanManageSettings, setNewAdminCanManageSettings] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<string | null>(null);
   const [editAdminUsername, setEditAdminUsername] = useState("");
@@ -137,7 +136,6 @@ export default function AdminUploadPage() {
   const [editAdminIsHead, setEditAdminIsHead] = useState(false);
   const [editAdminCanUpload, setEditAdminCanUpload] = useState(true);
   const [editAdminCanManageDatasets, setEditAdminCanManageDatasets] = useState(true);
-  const [editAdminCanManageAdmins, setEditAdminCanManageAdmins] = useState(false);
   const [editAdminCanManageSettings, setEditAdminCanManageSettings] = useState(false);
 
   const checkAuth = useCallback(async () => {
@@ -206,7 +204,6 @@ export default function AdminUploadPage() {
           isHeadAdmin: newAdminIsHead,
           canUpload: newAdminCanUpload,
           canManageDatasets: newAdminCanManageDatasets,
-          canManageAdmins: newAdminCanManageAdmins,
           canManageSettings: newAdminCanManageSettings,
         }),
       });
@@ -223,7 +220,6 @@ export default function AdminUploadPage() {
       setNewAdminIsHead(false);
       setNewAdminCanUpload(true);
       setNewAdminCanManageDatasets(true);
-      setNewAdminCanManageAdmins(false);
       setNewAdminCanManageSettings(false);
       setShowCreateAdminModal(false);
       loadAdmins();
@@ -245,7 +241,6 @@ export default function AdminUploadPage() {
         isHeadAdmin: editAdminIsHead,
         canUpload: editAdminCanUpload,
         canManageDatasets: editAdminCanManageDatasets,
-        canManageAdmins: editAdminCanManageAdmins,
         canManageSettings: editAdminCanManageSettings,
       };
 
@@ -272,7 +267,6 @@ export default function AdminUploadPage() {
       setEditAdminIsHead(false);
       setEditAdminCanUpload(true);
       setEditAdminCanManageDatasets(true);
-      setEditAdminCanManageAdmins(false);
       setEditAdminCanManageSettings(false);
       loadAdmins();
       setTimeout(() => setSuccess(null), 3000);
@@ -312,7 +306,6 @@ export default function AdminUploadPage() {
     setEditAdminIsHead(admin.isHeadAdmin ?? false);
     setEditAdminCanUpload(admin.canUpload ?? true);
     setEditAdminCanManageDatasets(admin.canManageDatasets ?? true);
-    setEditAdminCanManageAdmins(admin.canManageAdmins ?? false);
     setEditAdminCanManageSettings(admin.canManageSettings ?? false);
   };
 
@@ -2023,7 +2016,6 @@ No header mapping needed.`);
                     setNewAdminIsHead(false);
                     setNewAdminCanUpload(true);
                     setNewAdminCanManageDatasets(true);
-                    setNewAdminCanManageAdmins(false);
                     setNewAdminCanManageSettings(false);
                   }}
                   className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
@@ -2061,11 +2053,6 @@ No header mapping needed.`);
                             إدارة البيانات
                           </span>
                         )}
-                        {admin.canManageAdmins && (
-                          <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
-                            إدارة المسؤولين
-                          </span>
-                        )}
                         {admin.canManageSettings && (
                           <span className="px-2 py-1 bg-pink-100 text-pink-800 text-xs font-medium rounded-full">
                             إدارة الإعدادات
@@ -2094,7 +2081,6 @@ No header mapping needed.`);
                             setEditAdminIsHead(false);
                             setEditAdminCanUpload(true);
                             setEditAdminCanManageDatasets(true);
-                            setEditAdminCanManageAdmins(false);
                             setEditAdminCanManageSettings(false);
                           }}
                           className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
@@ -2196,27 +2182,13 @@ No header mapping needed.`);
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
-                          id="editAdminCanManageAdmins"
-                          checked={editAdminCanManageAdmins}
-                          onChange={(e) => setEditAdminCanManageAdmins(e.target.checked)}
-                          disabled={!editAdminIsHead}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
-                        />
-                        <label htmlFor="editAdminCanManageAdmins" className="text-sm text-gray-700">
-                          يمكنه إدارة المسؤولين (لرئيس المسؤولين فقط)
-                        </label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
                           id="editAdminCanManageSettings"
                           checked={editAdminCanManageSettings}
                           onChange={(e) => setEditAdminCanManageSettings(e.target.checked)}
-                          disabled={!editAdminIsHead}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         />
                         <label htmlFor="editAdminCanManageSettings" className="text-sm text-gray-700">
-                          يمكنه إدارة إعدادات صفحات البحث (لرئيس المسؤولين فقط)
+                          يمكنه إدارة إعدادات صفحات البحث
                         </label>
                       </div>
                     </div>
@@ -2348,27 +2320,13 @@ No header mapping needed.`);
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    id="newAdminCanManageAdmins"
-                    checked={newAdminCanManageAdmins}
-                    onChange={(e) => setNewAdminCanManageAdmins(e.target.checked)}
-                    disabled={!newAdminIsHead}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
-                  />
-                  <label htmlFor="newAdminCanManageAdmins" className="text-sm text-gray-700">
-                    يمكنه إدارة المسؤولين (لرئيس المسؤولين فقط)
-                  </label>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
                     id="newAdminCanManageSettings"
                     checked={newAdminCanManageSettings}
                     onChange={(e) => setNewAdminCanManageSettings(e.target.checked)}
-                    disabled={!newAdminIsHead}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
                   <label htmlFor="newAdminCanManageSettings" className="text-sm text-gray-700">
-                    يمكنه إدارة إعدادات صفحات البحث (لرئيس المسؤولين فقط)
+                    يمكنه إدارة إعدادات صفحات البحث
                   </label>
                 </div>
               </div>

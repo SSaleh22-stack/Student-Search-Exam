@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { username, password, isHeadAdmin, canUpload, canManageDatasets, canManageAdmins, canManageSettings } = await request.json();
+    const { username, password, isHeadAdmin, canUpload, canManageDatasets, canManageSettings } = await request.json();
 
     if (!username || !password) {
       return NextResponse.json(
@@ -87,7 +87,6 @@ export async function POST(request: NextRequest) {
         isHeadAdmin: isHeadAdmin === true,
         canUpload: canUpload !== false, // Default true
         canManageDatasets: canManageDatasets !== false, // Default true
-        canManageAdmins: canManageAdmins === true, // Default false
         canManageSettings: canManageSettings === true, // Default false
       },
       select: {
