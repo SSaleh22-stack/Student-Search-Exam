@@ -155,12 +155,44 @@ export default function AdminUploadPage() {
     }
   }, [router]);
 
+  const loadAdmins = async () => {
+    try {
+      const res = await fetch("/api/admin/admins");
+      if (res.ok) {
+        const data = await safeJsonParse(res);
+        setAdmins(data.admins || []);
+      } else {
+        const errorData = await safeJsonParse(res);
+        setError(errorData.error || "فشل تحميل المسؤولين");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "فشل تحميل المسؤولين");
+    }
+  };
+
+  const loadCurrentAdmin = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/check");
+      if (res.ok) {
+        const data = await safeJsonParse(res);
+        if (data.authenticated && data.admin) {
+          setCurrentAdmin(data.admin);
+          if (data.admin.isHeadAdmin && showAdminManagement) {
+            loadAdmins();
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load admin info:", err);
+    }
+  }, [showAdminManagement]);
+
   useEffect(() => {
     checkAuth();
     loadDatasets();
     loadSettings();
     loadCurrentAdmin();
-  }, [checkAuth]);
+  }, [checkAuth, loadCurrentAdmin]);
 
   const handleLogout = useCallback(async () => {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -233,38 +265,6 @@ export default function AdminUploadPage() {
       }
     };
   }, [handleLogout]);
-
-  const loadCurrentAdmin = async () => {
-    try {
-      const res = await fetch("/api/admin/check");
-      if (res.ok) {
-        const data = await safeJsonParse(res);
-        if (data.authenticated && data.admin) {
-          setCurrentAdmin(data.admin);
-          if (data.admin.isHeadAdmin && showAdminManagement) {
-            loadAdmins();
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Failed to load admin info:", err);
-    }
-  };
-
-  const loadAdmins = async () => {
-    try {
-      const res = await fetch("/api/admin/admins");
-      if (res.ok) {
-        const data = await safeJsonParse(res);
-        setAdmins(data.admins || []);
-      } else {
-        const errorData = await safeJsonParse(res);
-        setError(errorData.error || "فشل تحميل المسؤولين");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "فشل تحميل المسؤولين");
-    }
-  };
 
   const handleCreateAdmin = async () => {
     if (!newAdminUsername.trim() || !newAdminPassword.trim()) {
