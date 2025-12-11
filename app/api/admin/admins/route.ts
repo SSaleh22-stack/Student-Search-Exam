@@ -25,6 +25,7 @@ export async function GET() {
         isHeadAdmin: true,
         canUpload: true,
         canManageDatasets: true,
+        canDeleteDatasets: true,
         canManageAdmins: true,
         canManageSettings: true,
         createdAt: true,
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { username, password, name, lastname, isHeadAdmin, canUpload, canManageDatasets, canManageSettings } = await request.json();
+    const { username, password, name, lastname, isHeadAdmin, canUpload, canManageDatasets, canDeleteDatasets, canManageSettings } = await request.json();
 
     if (!username || !password) {
       return NextResponse.json(
@@ -91,6 +92,7 @@ export async function POST(request: NextRequest) {
         isHeadAdmin: isHeadAdmin === true,
         canUpload: canUpload !== false, // Default true
         canManageDatasets: canManageDatasets !== false, // Default true
+        canDeleteDatasets: canDeleteDatasets === true, // Default false
         canManageSettings: canManageSettings === true, // Default false
       },
       select: {

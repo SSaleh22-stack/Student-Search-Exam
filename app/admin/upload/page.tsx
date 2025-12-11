@@ -120,6 +120,14 @@ export default function AdminUploadPage() {
   const [readingHeaders, setReadingHeaders] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   
+  // Scheduled page activation
+  const [studentActivateDate, setStudentActivateDate] = useState("");
+  const [studentActivateTime, setStudentActivateTime] = useState("");
+  const [lecturerActivateDate, setLecturerActivateDate] = useState("");
+  const [lecturerActivateTime, setLecturerActivateTime] = useState("");
+  const [scheduleStudentPage, setScheduleStudentPage] = useState(false);
+  const [scheduleLecturerPage, setScheduleLecturerPage] = useState(false);
+  
   // Dataset selection
   const [selectedDatasets, setSelectedDatasets] = useState<Set<string>>(new Set());
   
@@ -130,7 +138,7 @@ export default function AdminUploadPage() {
   const [scheduleActivation, setScheduleActivation] = useState(false);
   
   // Admin management (head admin only)
-  const [currentAdmin, setCurrentAdmin] = useState<{ username: string; name?: string; isHeadAdmin: boolean; canManageSettings?: boolean } | null>(null);
+  const [currentAdmin, setCurrentAdmin] = useState<{ username: string; name?: string; isHeadAdmin: boolean; canManageSettings?: boolean; canDeleteDatasets?: boolean } | null>(null);
   const [admins, setAdmins] = useState<any[]>([]);
   const [showAdminManagement, setShowAdminManagement] = useState(false);
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
@@ -141,6 +149,7 @@ export default function AdminUploadPage() {
   const [newAdminIsHead, setNewAdminIsHead] = useState(false);
   const [newAdminCanUpload, setNewAdminCanUpload] = useState(true);
   const [newAdminCanManageDatasets, setNewAdminCanManageDatasets] = useState(true);
+  const [newAdminCanDeleteDatasets, setNewAdminCanDeleteDatasets] = useState(false);
   const [newAdminCanManageSettings, setNewAdminCanManageSettings] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<string | null>(null);
   const [editAdminUsername, setEditAdminUsername] = useState("");
@@ -150,6 +159,7 @@ export default function AdminUploadPage() {
   const [editAdminIsHead, setEditAdminIsHead] = useState(false);
   const [editAdminCanUpload, setEditAdminCanUpload] = useState(true);
   const [editAdminCanManageDatasets, setEditAdminCanManageDatasets] = useState(true);
+  const [editAdminCanDeleteDatasets, setEditAdminCanDeleteDatasets] = useState(false);
   const [editAdminCanManageSettings, setEditAdminCanManageSettings] = useState(false);
 
   const checkAuth = useCallback(async () => {
@@ -292,6 +302,7 @@ export default function AdminUploadPage() {
           isHeadAdmin: newAdminIsHead,
           canUpload: newAdminCanUpload,
           canManageDatasets: newAdminCanManageDatasets,
+          canDeleteDatasets: newAdminCanDeleteDatasets,
           canManageSettings: newAdminCanManageSettings,
         }),
       });
@@ -333,6 +344,7 @@ export default function AdminUploadPage() {
         isHeadAdmin: editAdminIsHead,
         canUpload: editAdminCanUpload,
         canManageDatasets: editAdminCanManageDatasets,
+        canDeleteDatasets: editAdminCanDeleteDatasets,
         canManageSettings: editAdminCanManageSettings,
       };
 
@@ -402,6 +414,7 @@ export default function AdminUploadPage() {
     setEditAdminIsHead(admin.isHeadAdmin ?? false);
     setEditAdminCanUpload(admin.canUpload ?? true);
     setEditAdminCanManageDatasets(admin.canManageDatasets ?? true);
+    setEditAdminCanDeleteDatasets(admin.canDeleteDatasets ?? false);
     setEditAdminCanManageSettings(admin.canManageSettings ?? false);
   };
 
@@ -412,23 +425,46 @@ export default function AdminUploadPage() {
         const data = await safeJsonParse(res);
         setStudentSearchActive(data.studentSearchActive ?? true);
         setLecturerSearchActive(data.lecturerSearchActive ?? true);
+        setStudentActivateDate(data.studentActivateDate || "");
+        setStudentActivateTime(data.studentActivateTime || "");
+        setLecturerActivateDate(data.lecturerActivateDate || "");
+        setLecturerActivateTime(data.lecturerActivateTime || "");
       }
     } catch (err) {
       console.error("Failed to load settings:", err);
     }
   };
 
-  const updateSearchSettings = async (type: "student" | "lecturer", isActive: boolean) => {
+  const updateSearchSettings = async (type: "student" | "lecturer", isActive?: boolean) => {
     setLoadingSettings(true);
     setError(null);
     try {
+      const body: any = {};
+      
+      if (type === "student") {
+        if (scheduleStudentPage && studentActivateDate && studentActivateTime) {
+          // Schedule activation
+          body.studentActivateDate = studentActivateDate;
+          body.studentActivateTime = studentActivateTime;
+        } else if (isActive !== undefined) {
+          // Immediate activation/deactivation
+          body.studentSearchActive = isActive;
+        }
+      } else {
+        if (scheduleLecturerPage && lecturerActivateDate && lecturerActivateTime) {
+          // Schedule activation
+          body.lecturerActivateDate = lecturerActivateDate;
+          body.lecturerActivateTime = lecturerActivateTime;
+        } else if (isActive !== undefined) {
+          // Immediate activation/deactivation
+          body.lecturerSearchActive = isActive;
+        }
+      }
+
       const res = await fetch("/api/admin/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentSearchActive: type === "student" ? isActive : studentSearchActive,
-          lecturerSearchActive: type === "lecturer" ? isActive : lecturerSearchActive,
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await safeJsonParse(res);
@@ -439,7 +475,24 @@ export default function AdminUploadPage() {
 
       setStudentSearchActive(data.studentSearchActive);
       setLecturerSearchActive(data.lecturerSearchActive);
-      setSuccess(`تم ${isActive ? "تفعيل" : "إلغاء تفعيل"} صفحة البحث ${type === "student" ? "للطلاب" : "للمحاضرين"} بنجاح`);
+      setStudentActivateDate(data.studentActivateDate || "");
+      setStudentActivateTime(data.studentActivateTime || "");
+      setLecturerActivateDate(data.lecturerActivateDate || "");
+      setLecturerActivateTime(data.lecturerActivateTime || "");
+      
+      if (scheduleStudentPage && studentActivateDate && studentActivateTime) {
+        setSuccess(`تم جدولة تفعيل صفحة البحث للطلاب في ${studentActivateDate} الساعة ${studentActivateTime}`);
+        setScheduleStudentPage(false);
+        setStudentActivateDate("");
+        setStudentActivateTime("");
+      } else if (scheduleLecturerPage && lecturerActivateDate && lecturerActivateTime) {
+        setSuccess(`تم جدولة تفعيل صفحة البحث للمحاضرين في ${lecturerActivateDate} الساعة ${lecturerActivateTime}`);
+        setScheduleLecturerPage(false);
+        setLecturerActivateDate("");
+        setLecturerActivateTime("");
+      } else if (isActive !== undefined) {
+        setSuccess(`تم ${isActive ? "تفعيل" : "إلغاء تفعيل"} صفحة البحث ${type === "student" ? "للطلاب" : "للمحاضرين"} بنجاح`);
+      }
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "فشل تحديث الإعدادات";
@@ -1981,14 +2034,16 @@ No header mapping needed.`);
                         >
                           إلغاء تفعيل المحدد ({selectedDatasets.size})
                         </button>
-                        <button
-                          onClick={handleBulkDelete}
-                          disabled={loading}
-                          className="px-3 py-1 bg-red-800 text-white text-sm rounded-md hover:bg-red-900 disabled:opacity-50 flex items-center gap-1"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          حذف المحدد ({selectedDatasets.size})
-                        </button>
+                        {(currentAdmin?.isHeadAdmin || currentAdmin?.canDeleteDatasets) && (
+                          <button
+                            onClick={handleBulkDelete}
+                            disabled={loading}
+                            className="px-3 py-1 bg-red-800 text-white text-sm rounded-md hover:bg-red-900 disabled:opacity-50 flex items-center gap-1"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            حذف المحدد ({selectedDatasets.size})
+                          </button>
+                        )}
                       </>
                 )}
                   </>
@@ -2078,15 +2133,17 @@ No header mapping needed.`);
                                 </>
                               )}
                             </button>
-                            <button
-                              onClick={() => handleDelete(dataset.id, dataset.name)}
-                              disabled={loading}
-                              className="px-3 py-1 bg-red-800 text-white text-sm rounded-md hover:bg-red-900 disabled:opacity-50 flex items-center gap-1"
-                              title="حذف مجموعة البيانات"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              حذف
-                            </button>
+                            {(currentAdmin?.isHeadAdmin || currentAdmin?.canDeleteDatasets) && (
+                              <button
+                                onClick={() => handleDelete(dataset.id, dataset.name)}
+                                disabled={loading}
+                                className="px-3 py-1 bg-red-800 text-white text-sm rounded-md hover:bg-red-900 disabled:opacity-50 flex items-center gap-1"
+                                title="حذف مجموعة البيانات"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                حذف
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -2293,56 +2350,164 @@ No header mapping needed.`);
                 <X className="w-5 h-5 text-gray-600" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-6">
               {/* Student Search */}
-              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div>
-                  <h3 className="font-medium text-gray-900">صفحة بحث الطلاب</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    التحكم في الوصول إلى صفحة البحث عن جداول امتحانات الطلاب
-                  </p>
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-gray-900">صفحة بحث الطلاب</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      التحكم في الوصول إلى صفحة البحث عن جداول امتحانات الطلاب
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-sm font-medium ${studentSearchActive ? "text-green-600" : "text-gray-500"}`}>
+                      {studentSearchActive ? "نشط" : "غير نشط"}
+                    </span>
+                    <button
+                      onClick={() => updateSearchSettings("student", !studentSearchActive)}
+                      disabled={loadingSettings}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                        studentSearchActive
+                          ? "bg-red-600 text-white hover:bg-red-700"
+                          : "bg-green-600 text-white hover:bg-green-700"
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {studentSearchActive ? "إلغاء التفعيل" : "تفعيل"}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-sm font-medium ${studentSearchActive ? "text-green-600" : "text-gray-500"}`}>
-                    {studentSearchActive ? "نشط" : "غير نشط"}
-                  </span>
-                  <button
-                    onClick={() => updateSearchSettings("student", !studentSearchActive)}
-                    disabled={loadingSettings}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      studentSearchActive
-                        ? "bg-red-600 text-white hover:bg-red-700"
-                        : "bg-green-600 text-white hover:bg-green-700"
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    {studentSearchActive ? "إلغاء التفعيل" : "تفعيل"}
-                  </button>
+                
+                {/* Scheduled Activation for Student Page */}
+                <div className="border-t border-blue-200 pt-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="scheduleStudentPage"
+                      checked={scheduleStudentPage}
+                      onChange={(e) => setScheduleStudentPage(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded"
+                    />
+                    <label htmlFor="scheduleStudentPage" className="text-sm font-medium text-gray-700">
+                      جدولة التفعيل
+                    </label>
+                  </div>
+                  {scheduleStudentPage && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">التاريخ (YYYY-MM-DD)</label>
+                        <input
+                          type="date"
+                          value={studentActivateDate}
+                          onChange={(e) => setStudentActivateDate(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">الوقت (HH:MM)</label>
+                        <input
+                          type="time"
+                          value={studentActivateTime}
+                          onChange={(e) => setStudentActivateTime(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {scheduleStudentPage && studentActivateDate && studentActivateTime && (
+                    <button
+                      onClick={() => updateSearchSettings("student")}
+                      disabled={loadingSettings}
+                      className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium disabled:opacity-50"
+                    >
+                      حفظ الجدولة
+                    </button>
+                  )}
+                  {studentActivateDate && studentActivateTime && !scheduleStudentPage && (
+                    <p className="text-xs text-gray-600">
+                      مجدول للتفعيل: {studentActivateDate} الساعة {studentActivateTime}
+                    </p>
+                  )}
                 </div>
               </div>
 
               {/* Lecturer Search */}
-              <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-200">
-                <div>
-                  <h3 className="font-medium text-gray-900">صفحة بحث المحاضرين</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    التحكم في الوصول إلى صفحة البحث عن جداول امتحانات المحاضرين
-                  </p>
+              <div className="p-4 bg-purple-50 rounded-lg border border-purple-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-gray-900">صفحة بحث المحاضرين</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      التحكم في الوصول إلى صفحة البحث عن جداول امتحانات المحاضرين
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-sm font-medium ${lecturerSearchActive ? "text-green-600" : "text-gray-500"}`}>
+                      {lecturerSearchActive ? "نشط" : "غير نشط"}
+                    </span>
+                    <button
+                      onClick={() => updateSearchSettings("lecturer", !lecturerSearchActive)}
+                      disabled={loadingSettings}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                        lecturerSearchActive
+                          ? "bg-red-600 text-white hover:bg-red-700"
+                          : "bg-green-600 text-white hover:bg-green-700"
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {lecturerSearchActive ? "إلغاء التفعيل" : "تفعيل"}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-sm font-medium ${lecturerSearchActive ? "text-green-600" : "text-gray-500"}`}>
-                    {lecturerSearchActive ? "نشط" : "غير نشط"}
-                  </span>
-                  <button
-                    onClick={() => updateSearchSettings("lecturer", !lecturerSearchActive)}
-                    disabled={loadingSettings}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      lecturerSearchActive
-                        ? "bg-red-600 text-white hover:bg-red-700"
-                        : "bg-green-600 text-white hover:bg-green-700"
-                    } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  >
-                    {lecturerSearchActive ? "إلغاء التفعيل" : "تفعيل"}
-                  </button>
+                
+                {/* Scheduled Activation for Lecturer Page */}
+                <div className="border-t border-purple-200 pt-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="scheduleLecturerPage"
+                      checked={scheduleLecturerPage}
+                      onChange={(e) => setScheduleLecturerPage(e.target.checked)}
+                      className="w-4 h-4 text-purple-600 rounded"
+                    />
+                    <label htmlFor="scheduleLecturerPage" className="text-sm font-medium text-gray-700">
+                      جدولة التفعيل
+                    </label>
+                  </div>
+                  {scheduleLecturerPage && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">التاريخ (YYYY-MM-DD)</label>
+                        <input
+                          type="date"
+                          value={lecturerActivateDate}
+                          onChange={(e) => setLecturerActivateDate(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">الوقت (HH:MM)</label>
+                        <input
+                          type="time"
+                          value={lecturerActivateTime}
+                          onChange={(e) => setLecturerActivateTime(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {scheduleLecturerPage && lecturerActivateDate && lecturerActivateTime && (
+                    <button
+                      onClick={() => updateSearchSettings("lecturer")}
+                      disabled={loadingSettings}
+                      className="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium disabled:opacity-50"
+                    >
+                      حفظ الجدولة
+                    </button>
+                  )}
+                  {lecturerActivateDate && lecturerActivateTime && !scheduleLecturerPage && (
+                    <p className="text-xs text-gray-600">
+                      مجدول للتفعيل: {lecturerActivateDate} الساعة {lecturerActivateTime}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -2388,6 +2553,7 @@ No header mapping needed.`);
                     setNewAdminIsHead(false);
                     setNewAdminCanUpload(true);
                     setNewAdminCanManageDatasets(true);
+                    setNewAdminCanDeleteDatasets(false);
                     setNewAdminCanManageSettings(false);
                   }}
                   className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
@@ -2453,6 +2619,7 @@ No header mapping needed.`);
                             setEditAdminIsHead(false);
                             setEditAdminCanUpload(true);
                             setEditAdminCanManageDatasets(true);
+                            setEditAdminCanDeleteDatasets(false);
                             setEditAdminCanManageSettings(false);
                           }}
                           className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
@@ -2573,6 +2740,18 @@ No header mapping needed.`);
                         />
                         <label htmlFor="editAdminCanManageDatasets" className="text-sm text-gray-700">
                           يمكنه إدارة مجموعات البيانات
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="editAdminCanDeleteDatasets"
+                          checked={editAdminCanDeleteDatasets}
+                          onChange={(e) => setEditAdminCanDeleteDatasets(e.target.checked)}
+                          className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                        />
+                        <label htmlFor="editAdminCanDeleteDatasets" className="text-sm text-gray-700">
+                          يمكنه حذف مجموعات البيانات
                         </label>
                       </div>
                       <div className="flex items-center gap-2">
@@ -2735,6 +2914,18 @@ No header mapping needed.`);
                   />
                   <label htmlFor="newAdminCanManageDatasets" className="text-sm text-gray-700">
                     يمكنه إدارة مجموعات البيانات
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="newAdminCanDeleteDatasets"
+                    checked={newAdminCanDeleteDatasets}
+                    onChange={(e) => setNewAdminCanDeleteDatasets(e.target.checked)}
+                    className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                  />
+                  <label htmlFor="newAdminCanDeleteDatasets" className="text-sm text-gray-700">
+                    يمكنه حذف مجموعات البيانات
                   </label>
                 </div>
                 <div className="flex items-center gap-2">

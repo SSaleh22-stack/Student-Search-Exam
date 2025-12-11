@@ -16,6 +16,7 @@ export async function GET() {
         name: admin.name,
         isHeadAdmin: admin.isHeadAdmin,
         canManageSettings: admin.canManageSettings ?? false,
+        canDeleteDatasets: admin.canDeleteDatasets ?? false,
       }
     });
   } catch (error) {

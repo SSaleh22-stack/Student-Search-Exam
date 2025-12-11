@@ -89,6 +89,10 @@ model Settings {
   id                String   @id @default("settings")
   studentSearchActive Boolean @default(true)
   lecturerSearchActive Boolean @default(true)
+  studentActivateDate String?  // Scheduled activation date for student page (YYYY-MM-DD)
+  studentActivateTime String?  // Scheduled activation time for student page (HH:MM)
+  lecturerActivateDate String? // Scheduled activation date for lecturer page (YYYY-MM-DD)
+  lecturerActivateTime String? // Scheduled activation time for lecturer page (HH:MM)
   updatedAt         DateTime @updatedAt
 }
 
@@ -101,6 +105,7 @@ model Admin {
   isHeadAdmin       Boolean  @default(false)
   canUpload         Boolean  @default(true)
   canManageDatasets Boolean  @default(true)
+  canDeleteDatasets Boolean  @default(false) // Permission to delete datasets
   canManageAdmins   Boolean  @default(false)
   canManageSettings Boolean  @default(false)
   createdAt         DateTime @default(now())

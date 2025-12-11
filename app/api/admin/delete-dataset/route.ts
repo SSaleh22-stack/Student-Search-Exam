@@ -6,9 +6,20 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const isAuthenticated = await checkSession();
-    if (!isAuthenticated) {
+    const { getCurrentAdmin } = await import("@/lib/auth");
+    const admin = await getCurrentAdmin();
+    
+    if (!admin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check if admin has permission to delete datasets
+    // Head admins can always delete, or admins with canDeleteDatasets permission
+    if (!admin.isHeadAdmin && !admin.canDeleteDatasets) {
+      return NextResponse.json(
+        { error: "غير مصرح. ليس لديك صلاحية لحذف مجموعات البيانات. يرجى الاتصال برئيس المسؤولين." },
+        { status: 403 }
+      );
     }
 
     const { datasetId } = await request.json();

@@ -8,6 +8,7 @@ export interface AdminInfo {
   name?: string;
   isHeadAdmin: boolean;
   canManageSettings?: boolean;
+  canDeleteDatasets?: boolean;
 }
 
 export async function verifyAdmin(username: string, password: string): Promise<AdminInfo | null> {
@@ -91,6 +92,7 @@ export async function getCurrentAdmin(): Promise<AdminInfo | null> {
           name: true,
           isHeadAdmin: true,
           canManageSettings: true,
+          canDeleteDatasets: true,
         },
       });
 
@@ -107,6 +109,7 @@ export async function getCurrentAdmin(): Promise<AdminInfo | null> {
         name: admin.name || undefined,
         isHeadAdmin: admin.isHeadAdmin,
         canManageSettings: admin.canManageSettings || undefined,
+        canDeleteDatasets: admin.canDeleteDatasets || undefined,
       };
     }
 
@@ -132,6 +135,7 @@ export async function getCurrentAdmin(): Promise<AdminInfo | null> {
         name: true,
         isHeadAdmin: true,
         canManageSettings: true,
+        canDeleteDatasets: true,
       },
     });
 
@@ -145,6 +149,7 @@ export async function getCurrentAdmin(): Promise<AdminInfo | null> {
       name: admin.name || undefined,
       isHeadAdmin: admin.isHeadAdmin,
       canManageSettings: admin.canManageSettings || undefined,
+      canDeleteDatasets: admin.canDeleteDatasets || undefined,
     };
   } catch (error) {
     console.error("Error getting current admin:", error);
