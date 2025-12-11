@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import { z } from "zod";
-import { parseArabicTime, extractDateFromCellText, gregorianToHijri } from "@/lib/utils/hijri-converter";
+import { parseArabicTime, extractDateFromCellText, hijriToGregorian } from "@/lib/utils/hijri-converter";
 
 export interface ParseLecturerResult {
   validRows: Array<{
@@ -467,66 +467,59 @@ export async function parseLecturerSchedule(
         value = cell.result || value;
       }
 
-      // Handle date formatting - keep Hijri dates as-is, don't convert
+      // Handle date formatting - use dates as-is from Excel, store as Gregorian
       if (fieldName === "exam_date") {
-        // Check if this might be a Hijri date that Excel converted to Gregorian
-        const numFmt = cell.numFmt || "";
-        const isHijriFormat = numFmt.includes("[$-1970000]") || numFmt.includes("B2") || numFmt.toLowerCase().includes("hijri");
-        
         // ALWAYS prefer cell.text first - this preserves the original display format from Excel
-        // Excel may convert Hijri dates to Gregorian in cell.value, but cell.text might show the formatted value
         const cellText = cell.text?.trim() || "";
         const extractedDate = extractDateFromCellText(cellText);
         
         if (extractedDate) {
-          // Successfully extracted date from cell text - preserves Hijri dates as-is
+          // Successfully extracted date from cell text
+          // Check if it's Hijri (year 1200-1600) and convert to Gregorian for storage
+          const year = parseInt(extractedDate.substring(0, 4), 10);
+          if (year >= 1200 && year < 1600) {
+            // It's a Hijri date - convert to Gregorian before storing
+            const month = parseInt(extractedDate.substring(5, 7), 10);
+            const day = parseInt(extractedDate.substring(8, 10), 10);
+            const gregorianDate = hijriToGregorian(year, month, day);
+            const gregorianYear = gregorianDate.getFullYear();
+            const gregorianMonth = String(gregorianDate.getMonth() + 1).padStart(2, "0");
+            const gregorianDay = String(gregorianDate.getDate()).padStart(2, "0");
+            value = `${gregorianYear}-${gregorianMonth}-${gregorianDay}`;
+            console.log(`[parseLecturer] Row ${rowNum}: Converted Hijri date ${extractedDate} to Gregorian: ${value}`);
+          } else {
+            // It's already Gregorian - use as-is
+            value = extractedDate;
+            console.log(`[parseLecturer] Row ${rowNum}: Using cell text value (Gregorian): ${extractedDate}`);
+          }
           isEmpty = false;
-          value = extractedDate;
-          console.log(`[parseLecturer] Row ${rowNum}: Using cell text value (preserves Hijri/Gregorian as-is): ${extractedDate}`);
         }
         // Fallback to cell.value only if cell.text couldn't be parsed
         else if (value instanceof Date) {
           isEmpty = false;
           const dateObj = value as Date;
-          // Excel stores Hijri dates as Gregorian Date objects internally
-          // If the format indicates Hijri, convert the Gregorian Date back to Hijri
-          if (isHijriFormat) {
-            // Convert Gregorian Date back to Hijri (Excel stored it as date format in Hijri)
-            const hijri = gregorianToHijri(dateObj);
-            value = `${hijri.year}-${String(hijri.month).padStart(2, "0")}-${String(hijri.day).padStart(2, "0")}`;
-            const gregorianStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`;
-            console.log(`[parseLecturer] Row ${rowNum}: Converted Gregorian Date to Hijri: ${value} (from Gregorian: ${gregorianStr}, numFmt: "${numFmt}")`);
-          } else {
-            // Keep as Gregorian
-            const year = dateObj.getFullYear();
-            const month = String(dateObj.getMonth() + 1).padStart(2, "0");
-            const day = String(dateObj.getDate()).padStart(2, "0");
-            value = `${year}-${month}-${day}`;
-            console.log(`[parseLecturer] Row ${rowNum}: Date object formatted to: ${value} (Gregorian)`);
-          }
+          // Use Date object as-is (ExcelJS reads it as Gregorian)
+          // Format as YYYY-MM-DD and store in database as Gregorian
+          const year = dateObj.getFullYear();
+          const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+          const day = String(dateObj.getDate()).padStart(2, "0");
+          value = `${year}-${month}-${day}`;
+          console.log(`[parseLecturer] Row ${rowNum}: Date object formatted to Gregorian: ${value}`);
         }
         // Handle Excel serial date number - only if cell text wasn't usable
         else if (typeof value === "number") {
           isEmpty = false;
           try {
             // Excel serial date: days since January 1, 1900
+            // Convert to JavaScript date
             const excelEpoch = new Date(1899, 11, 30); // Excel epoch is Dec 30, 1899
             const jsDate = new Date(excelEpoch.getTime() + value * 86400000);
-            
-              // If format indicates Hijri, convert the Gregorian Date back to Hijri
-              if (isHijriFormat) {
-                // Convert Gregorian Date back to Hijri (Excel stored it as date format in Hijri)
-                const hijri = gregorianToHijri(jsDate);
-                value = `${hijri.year}-${String(hijri.month).padStart(2, "0")}-${String(hijri.day).padStart(2, "0")}`;
-                const gregorianStr = `${jsDate.getFullYear()}-${String(jsDate.getMonth() + 1).padStart(2, "0")}-${String(jsDate.getDate()).padStart(2, "0")}`;
-                console.log(`[parseLecturer] Row ${rowNum}: Converted Excel serial date to Hijri: ${value} (from Gregorian: ${gregorianStr}, numFmt: "${numFmt}")`);
-              } else {
-              const year = jsDate.getFullYear();
-              const month = String(jsDate.getMonth() + 1).padStart(2, "0");
-              const day = String(jsDate.getDate()).padStart(2, "0");
-              value = `${year}-${month}-${day}`;
-              console.log(`[parseLecturer] Row ${rowNum}: Excel serial date formatted to: ${value} (Gregorian)`);
-            }
+            // Format as Gregorian date
+            const year = jsDate.getFullYear();
+            const month = String(jsDate.getMonth() + 1).padStart(2, "0");
+            const day = String(jsDate.getDate()).padStart(2, "0");
+            value = `${year}-${month}-${day}`;
+            console.log(`[parseLecturer] Row ${rowNum}: Excel serial date formatted to Gregorian: ${value}`);
           } catch (e) {
             console.warn(`[parseLecturer] Row ${rowNum}: Failed to convert Excel serial date:`, value, e);
             value = String(value);
