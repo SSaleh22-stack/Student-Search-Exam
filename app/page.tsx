@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Calendar, Clock, MapPin, BookOpen, Loader2, Printer, Copy, Check, Grid3x3, Lock } from "lucide-react";
+import { Search, Calendar, Clock, MapPin, BookOpen, Loader2, Printer, FileText, Image as ImageIcon, Calendar as CalendarIcon, Grid3x3, Lock } from "lucide-react";
 import { formatHijriDate } from "@/lib/utils/hijri-converter";
 import { safeJsonParse } from "@/lib/utils";
 import Image from "next/image";
@@ -24,7 +24,6 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [schedules, setSchedules] = useState<ExamSchedule[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [isActive, setIsActive] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -114,21 +113,99 @@ export default function HomePage() {
     window.print();
   };
 
-  const handleCopy = async () => {
-    const text = schedules
-      .map(
-        (s) =>
-          `${s.courseName} (${s.courseCode}) - ${formatDate(s.examDate)} ${s.startTime}-${s.endTime} في ${s.place}`
-      )
-      .join("\n");
+  const handleExportPDF = async () => {
+    const { jsPDF } = await import("jspdf");
+    const html2canvas = (await import("html2canvas")).default;
+    
+    const container = document.querySelector(".space-y-4");
+    if (!container) return;
     
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      const canvas = await html2canvas(container as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#f9fafb",
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const imgWidth = 210;
+      const pageHeight = 295;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      
+      pdf.save(`جدول_الامتحانات_${studentId}.pdf`);
     } catch (err) {
-      console.error("Failed to copy:", err);
+      console.error("Failed to export PDF:", err);
     }
+  };
+
+  const handleExportJPG = async () => {
+    const html2canvas = (await import("html2canvas")).default;
+    
+    const container = document.querySelector(".space-y-4");
+    if (!container) return;
+    
+    try {
+      const canvas = await html2canvas(container as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#f9fafb",
+      });
+      const link = document.createElement("a");
+      link.download = `جدول_الامتحانات_${studentId}.jpg`;
+      link.href = canvas.toDataURL("image/jpeg", 0.95);
+      link.click();
+    } catch (err) {
+      console.error("Failed to export JPG:", err);
+    }
+  };
+
+  const handleExportCalendar = () => {
+    const icsContent = schedules
+      .map((schedule) => {
+        const startDate = new Date(`${schedule.examDate}T${schedule.startTime}`);
+        const endDate = schedule.endTime 
+          ? new Date(`${schedule.examDate}T${schedule.endTime}`)
+          : new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // Default 2 hours
+        
+        const formatDate = (date: Date) => {
+          return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+        };
+        
+        return `BEGIN:VEVENT
+DTSTART:${formatDate(startDate)}
+DTEND:${formatDate(endDate)}
+SUMMARY:${schedule.courseName} (${schedule.courseCode})
+DESCRIPTION:${schedule.period} - ${schedule.place}
+LOCATION:${schedule.place}
+END:VEVENT`;
+      })
+      .join("\n");
+    
+    const ics = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Exam Schedule//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+${icsContent}
+END:VCALENDAR`;
+    
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `جدول_الامتحانات_${studentId}.ics`;
+    link.click();
   };
 
   // Show loading state while checking activation status
@@ -237,23 +314,30 @@ export default function HomePage() {
               <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900">
                 جدول الامتحانات ({schedules.length} {schedules.length === 1 ? "امتحان" : schedules.length === 2 ? "امتحانان" : "امتحانات"})
               </h2>
-              <div className="flex gap-2 w-full sm:w-auto">
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                 <button
-                  onClick={handleCopy}
-                  className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center justify-center gap-2 transition-colors"
-                  title="نسخ الجدول"
+                  onClick={handleExportPDF}
+                  className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base bg-red-100 text-red-700 rounded-md hover:bg-red-200 flex items-center justify-center gap-2 transition-colors"
+                  title="تصدير كـ PDF"
                 >
-                  {copied ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      تم النسخ!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      نسخ
-                    </>
-                  )}
+                  <FileText className="w-4 h-4" />
+                  PDF
+                </button>
+                <button
+                  onClick={handleExportJPG}
+                  className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 flex items-center justify-center gap-2 transition-colors"
+                  title="تصدير كـ JPG"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  JPG
+                </button>
+                <button
+                  onClick={handleExportCalendar}
+                  className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base bg-green-100 text-green-700 rounded-md hover:bg-green-200 flex items-center justify-center gap-2 transition-colors"
+                  title="تصدير إلى التقويم"
+                >
+                  <CalendarIcon className="w-4 h-4" />
+                  التقويم
                 </button>
                 <button
                   onClick={handlePrint}

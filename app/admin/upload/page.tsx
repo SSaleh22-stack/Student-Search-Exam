@@ -837,10 +837,12 @@ No header mapping needed.`);
         if (checkRes.ok) {
           const checkData = await safeJsonParse(checkRes);
           if (checkData.canAutoDetect) {
-            // Auto-detection will work, set mapping and don't show UI
+            // Auto-detection will work, set mapping and always show UI for manual editing
             setExamMapping(checkData.mapping);
             setExamAutoDetectSuccess(true);
-            setShowMapping(false);
+            // Always show mapping UI to allow manual editing for exam files
+            setExamHeaders(checkData.headers || []);
+            setShowMapping(true);
             setReadingProgress(100);
             setTimeout(() => {
               setReadingHeaders(false);
@@ -1567,21 +1569,9 @@ No header mapping needed.`);
                           <div className="flex items-center gap-2">
                             <CheckCircle className="w-4 h-4" />
                             <span className="text-sm font-medium">
-                              ملف جدول الامتحانات: تم اكتشاف جميع العناوين تلقائياً بنجاح! لا حاجة للتعيين اليدوي.
+                              ملف جدول الامتحانات: تم اكتشاف جميع العناوين تلقائياً بنجاح! يمكنك تعديلها أدناه إذا لزم الأمر.
                             </span>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setExamAutoDetectSuccess(false);
-                              if (examFiles.length > 0) {
-                                readHeaders(examFiles[0], "exam", true);
-                              }
-                            }}
-                            className="mt-3 px-4 py-2 text-sm font-medium text-green-700 bg-green-100 hover:bg-green-200 border border-green-300 rounded-md transition-colors"
-                          >
-                            اضغط لتعديل العناوين يدوياً
-                          </button>
                         </div>
                       )}
                     </>
