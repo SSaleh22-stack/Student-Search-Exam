@@ -218,3 +218,113 @@ export function formatHijriDate(gregorianDateStr: string): string {
   }
 }
 
+/**
+ * Extract date from Excel cell text, preserving Hijri dates
+ * This function parses various date formats and keeps Hijri dates as-is (doesn't convert to Gregorian)
+ * @param cellText The text value from Excel cell (as displayed in Excel)
+ * @returns Date string in YYYY-MM-DD format (Hijri or Gregorian, preserved as-is) or null if cannot parse
+ */
+export function extractDateFromCellText(cellText: string | null | undefined): string | null {
+  if (!cellText || !cellText.trim()) {
+    return null;
+  }
+  
+  // Convert Arabic numerals to Western numerals first
+  const westernText = convertArabicNumerals(cellText.trim());
+  
+  // Try various date formats:
+  // 1. YYYY-MM-DD (e.g., "1447-07-01" or "2025-01-15")
+  let match = westernText.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10);
+    const day = parseInt(match[3], 10);
+    
+    // Validate month and day
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${match[1]}-${match[2]}-${match[3]}`; // Keep as-is (Hijri or Gregorian)
+    }
+  }
+  
+  // 2. YYYY/MM/DD (e.g., "1447/07/01" or "2025/01/15")
+  match = westernText.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+  if (match) {
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10);
+    const day = parseInt(match[3], 10);
+    
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${match[1]}-${match[2]}-${match[3]}`; // Convert to YYYY-MM-DD format
+    }
+  }
+  
+  // 3. DD/MM/YYYY or MM/DD/YYYY (e.g., "01/07/1447" or "15/01/2025" or "07/01/1447")
+  // Try to distinguish: if first number > 12, it's likely DD/MM/YYYY; if second > 12, it's likely MM/DD/YYYY
+  match = westernText.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (match) {
+    const first = parseInt(match[1], 10);
+    const second = parseInt(match[2], 10);
+    const year = parseInt(match[3], 10);
+    
+    let month: number, day: number;
+    
+    // If first number > 12, it must be DD/MM/YYYY (day can be > 12, month cannot)
+    if (first > 12 && second <= 12) {
+      day = first;
+      month = second;
+    }
+    // If second number > 12, it must be MM/DD/YYYY (month can't be > 12, day can)
+    else if (second > 12 && first <= 12) {
+      month = first;
+      day = second;
+    }
+    // If both <= 12, we can't tell, but for Hijri dates (year 1200-1600), assume DD/MM/YYYY
+    // For Gregorian dates (year >= 1600), assume MM/DD/YYYY (US format)
+    else if (first <= 12 && second <= 12) {
+      if (year >= 1200 && year < 1600) {
+        // Hijri date - assume DD/MM/YYYY (more common in regions using Hijri)
+        day = first;
+        month = second;
+      } else {
+        // Gregorian date - assume MM/DD/YYYY (US format) or DD/MM/YYYY (international)
+        // Default to DD/MM/YYYY as it's more common internationally
+        day = first;
+        month = second;
+      }
+    } else {
+      // Invalid - skip
+      return null;
+    }
+    
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  }
+  
+  // 5. YYYY.MM.DD (e.g., "1447.07.01" or "2025.01.15")
+  match = westernText.match(/^(\d{4})\.(\d{2})\.(\d{2})$/);
+  if (match) {
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10);
+    const day = parseInt(match[3], 10);
+    
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${match[1]}-${match[2]}-${match[3]}`;
+    }
+  }
+  
+  // 6. Try to match any 4-digit year followed by month and day
+  match = westernText.match(/(\d{4})[-\/\.](\d{1,2})[-\/\.](\d{1,2})/);
+  if (match) {
+    const year = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10);
+    const day = parseInt(match[3], 10);
+    
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${match[1]}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+  }
+  
+  return null; // Cannot parse
+}
+

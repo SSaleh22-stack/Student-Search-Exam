@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { z } from "zod";
 import { examScheduleRowSchema, type ValidationError } from "./schemas";
-import { parseHijriDate, parseArabicTime } from "@/lib/utils/hijri-converter";
+import { parseHijriDate, parseArabicTime, extractDateFromCellText } from "@/lib/utils/hijri-converter";
 
 export interface ParseExamResult {
   validRows: Array<{
@@ -345,27 +345,28 @@ export async function parseExamSchedule(
       if (fieldName) {
         // Handle date formatting - keep Hijri dates as-is, don't convert
         if (fieldName === "exam_date") {
-          // First, try to get the cell's text value (as displayed in Excel)
-          // This preserves Hijri dates that Excel shows as strings
+          // ALWAYS prefer cell.text first - this preserves the original display format from Excel
+          // Excel may convert Hijri dates to Gregorian in cell.value, but cell.text shows the original
           const cellText = cell.text?.trim() || "";
+          const extractedDate = extractDateFromCellText(cellText);
           
-          // If cell text is in YYYY-MM-DD format (could be Hijri like "1447-07-01"), use it
-          if (cellText && /^\d{4}-\d{2}-\d{2}$/.test(cellText)) {
+          if (extractedDate) {
+            // Successfully extracted date from cell text - preserves Hijri dates
             isEmpty = false;
-            value = cellText; // Keep Hijri dates as-is from Excel display
-            console.log(`[parseExam] Row ${rowNum}: Using cell text value (preserves Hijri): ${cellText}`);
+            value = extractedDate;
+            console.log(`[parseExam] Row ${rowNum}: Using cell text value (preserves Hijri/Gregorian): ${extractedDate}`);
           }
-          // Handle Date object (Excel Date type) - only if cell text wasn't usable
+          // Fallback to cell.value only if cell.text couldn't be parsed
           else if (value instanceof Date) {
             isEmpty = false;
-            // Excel converted it to Gregorian, but we'll format it
+            // Excel converted it to Gregorian Date object
             const year = value.getFullYear();
             const month = String(value.getMonth() + 1).padStart(2, "0");
             const day = String(value.getDate()).padStart(2, "0");
             value = `${year}-${month}-${day}`;
-            console.log(`[parseExam] Row ${rowNum}: Date object formatted to: ${value} (WARNING: May have been converted from Hijri)`);
+            console.log(`[parseExam] Row ${rowNum}: Date object formatted to: ${value} (WARNING: May have been converted from Hijri - cell.text was: "${cellText}")`);
           } 
-          // Handle Excel serial date number
+          // Handle Excel serial date number - only if cell text wasn't usable
           else if (typeof value === "number") {
             isEmpty = false;
             try {
@@ -377,7 +378,7 @@ export async function parseExamSchedule(
               const month = String(jsDate.getMonth() + 1).padStart(2, "0");
               const day = String(jsDate.getDate()).padStart(2, "0");
               value = `${year}-${month}-${day}`;
-              console.log(`[parseExam] Row ${rowNum}: Excel serial date formatted to: ${value} (WARNING: May have been converted from Hijri)`);
+              console.log(`[parseExam] Row ${rowNum}: Excel serial date formatted to: ${value} (WARNING: May have been converted from Hijri - cell.text was: "${cellText}")`);
             } catch (e) {
               console.warn(`[parseExam] Row ${rowNum}: Failed to convert Excel serial date:`, value, e);
               value = String(value);
