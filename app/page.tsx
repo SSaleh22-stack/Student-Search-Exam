@@ -724,10 +724,15 @@ END:VCALENDAR`;
               className="h-12 sm:h-16 md:h-20 w-auto"
             />
           </div>
-          <div className="mb-2">
-            <span className="inline-block px-3 py-1 bg-yellow-100 text-yellow-800 text-xs sm:text-sm font-semibold rounded-full border border-yellow-300">
-              موقع تجريبي
-            </span>
+          <div className="mb-4 sm:mb-6 flex justify-center">
+            <div className="relative inline-flex items-center justify-center">
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 rounded-lg blur-sm opacity-75 animate-pulse"></div>
+              <div className="relative bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-lg shadow-lg border-2 border-orange-600 transform hover:scale-105 transition-transform duration-200">
+                <span className="text-base sm:text-lg md:text-xl font-bold tracking-wide drop-shadow-md">
+                  ⚠️ موقع تجريبي
+                </span>
+              </div>
+            </div>
           </div>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
             البحث عن جدول الامتحانات
