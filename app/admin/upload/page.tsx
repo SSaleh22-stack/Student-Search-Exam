@@ -2423,10 +2423,15 @@ No header mapping needed.`);
                       حفظ الجدولة
                     </button>
                   )}
-                  {studentActivateDate && studentActivateTime && !scheduleStudentPage && (
-                    <p className="text-xs text-gray-600">
-                      مجدول للتفعيل: {studentActivateDate} الساعة {studentActivateTime}
-                    </p>
+                  {studentActivateDate && studentActivateTime && (
+                    <div className="bg-blue-100 border border-blue-300 rounded-md p-3">
+                      <p className="text-sm font-medium text-blue-900">
+                        مجدول للتفعيل:
+                      </p>
+                      <p className="text-sm text-blue-800 mt-1">
+                        التاريخ: {studentActivateDate} | الوقت: {studentActivateTime}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -2503,10 +2508,15 @@ No header mapping needed.`);
                       حفظ الجدولة
                     </button>
                   )}
-                  {lecturerActivateDate && lecturerActivateTime && !scheduleLecturerPage && (
-                    <p className="text-xs text-gray-600">
-                      مجدول للتفعيل: {lecturerActivateDate} الساعة {lecturerActivateTime}
-                    </p>
+                  {lecturerActivateDate && lecturerActivateTime && (
+                    <div className="bg-purple-100 border border-purple-300 rounded-md p-3">
+                      <p className="text-sm font-medium text-purple-900">
+                        مجدول للتفعيل:
+                      </p>
+                      <p className="text-sm text-purple-800 mt-1">
+                        التاريخ: {lecturerActivateDate} | الوقت: {lecturerActivateTime}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
