@@ -460,22 +460,32 @@ export default function AdminUploadPage() {
       const body: any = {};
       
       if (type === "student") {
-        if (scheduleStudentPage && studentActivateDate && studentActivateTime) {
+        if ((scheduleStudentPage || (studentActivateDate && studentActivateTime)) && studentActivateDate && studentActivateTime) {
           // Schedule activation
           body.studentActivateDate = studentActivateDate;
           body.studentActivateTime = studentActivateTime;
         } else if (isActive !== undefined) {
           // Immediate activation/deactivation
           body.studentSearchActive = isActive;
+          // Clear scheduled activation if activating/deactivating immediately
+          if (isActive !== undefined) {
+            body.studentActivateDate = null;
+            body.studentActivateTime = null;
+          }
         }
       } else {
-        if (scheduleLecturerPage && lecturerActivateDate && lecturerActivateTime) {
+        if ((scheduleLecturerPage || (lecturerActivateDate && lecturerActivateTime)) && lecturerActivateDate && lecturerActivateTime) {
           // Schedule activation
           body.lecturerActivateDate = lecturerActivateDate;
           body.lecturerActivateTime = lecturerActivateTime;
         } else if (isActive !== undefined) {
           // Immediate activation/deactivation
           body.lecturerSearchActive = isActive;
+          // Clear scheduled activation if activating/deactivating immediately
+          if (isActive !== undefined) {
+            body.lecturerActivateDate = null;
+            body.lecturerActivateTime = null;
+          }
         }
       }
 
@@ -498,20 +508,23 @@ export default function AdminUploadPage() {
       setLecturerActivateDate(data.lecturerActivateDate || "");
       setLecturerActivateTime(data.lecturerActivateTime || "");
       
-      if (scheduleStudentPage && studentActivateDate && studentActivateTime) {
-        setSuccess(`تم جدولة تفعيل صفحة البحث للطلاب في ${studentActivateDate} الساعة ${studentActivateTime}`);
-        setScheduleStudentPage(false);
-        setStudentActivateDate("");
-        setStudentActivateTime("");
-      } else if (scheduleLecturerPage && lecturerActivateDate && lecturerActivateTime) {
-        setSuccess(`تم جدولة تفعيل صفحة البحث للمحاضرين في ${lecturerActivateDate} الساعة ${lecturerActivateTime}`);
-        setScheduleLecturerPage(false);
-        setLecturerActivateDate("");
-        setLecturerActivateTime("");
+      // Update checkbox states based on scheduled activation
+      if (data.studentActivateDate && data.studentActivateTime) {
+        setScheduleStudentPage(true);
+      }
+      if (data.lecturerActivateDate && data.lecturerActivateTime) {
+        setScheduleLecturerPage(true);
+      }
+      
+      // Show success message based on what was saved
+      if (type === "student" && data.studentActivateDate && data.studentActivateTime) {
+        setSuccess(`تم جدولة تفعيل صفحة البحث للطلاب في ${data.studentActivateDate} الساعة ${data.studentActivateTime}`);
+      } else if (type === "lecturer" && data.lecturerActivateDate && data.lecturerActivateTime) {
+        setSuccess(`تم جدولة تفعيل صفحة البحث للمحاضرين في ${data.lecturerActivateDate} الساعة ${data.lecturerActivateTime}`);
       } else if (isActive !== undefined) {
         setSuccess(`تم ${isActive ? "تفعيل" : "إلغاء تفعيل"} صفحة البحث ${type === "student" ? "للطلاب" : "للمحاضرين"} بنجاح`);
       }
-      setTimeout(() => setSuccess(null), 3000);
+      setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "فشل تحديث الإعدادات";
       setError(errorMessage);
@@ -2444,15 +2457,23 @@ No header mapping needed.`);
                     <input
                       type="checkbox"
                       id="scheduleStudentPage"
-                      checked={scheduleStudentPage}
-                      onChange={(e) => setScheduleStudentPage(e.target.checked)}
+                      checked={scheduleStudentPage || !!(studentActivateDate && studentActivateTime)}
+                      onChange={(e) => {
+                        setScheduleStudentPage(e.target.checked);
+                        if (!e.target.checked) {
+                          // If unchecking, clear scheduled activation
+                          setStudentActivateDate("");
+                          setStudentActivateTime("");
+                          updateSearchSettings("student", false);
+                        }
+                      }}
                       className="w-4 h-4 text-blue-600 rounded"
                     />
                     <label htmlFor="scheduleStudentPage" className="text-sm font-medium text-gray-700">
                       جدولة التفعيل
                     </label>
                   </div>
-                  {scheduleStudentPage && (
+                  {(scheduleStudentPage || (studentActivateDate && studentActivateTime)) && (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">التاريخ (YYYY-MM-DD)</label>
@@ -2474,7 +2495,7 @@ No header mapping needed.`);
                       </div>
                     </div>
                   )}
-                  {scheduleStudentPage && studentActivateDate && studentActivateTime && (
+                  {(scheduleStudentPage || (studentActivateDate && studentActivateTime)) && studentActivateDate && studentActivateTime && (
                     <button
                       onClick={() => updateSearchSettings("student")}
                       disabled={loadingSettings}
@@ -2484,13 +2505,16 @@ No header mapping needed.`);
                     </button>
                   )}
                   {studentActivateDate && studentActivateTime && (
-                    <div className="bg-blue-100 border border-blue-300 rounded-md p-3">
-                      <p className="text-sm font-medium text-blue-900">
-                        مجدول للتفعيل:
-                      </p>
-                      <p className="text-sm text-blue-800 mt-1">
-                        التاريخ: {studentActivateDate} | الوقت: {studentActivateTime}
-                      </p>
+                    <div className="bg-blue-100 border border-blue-300 rounded-md p-3 flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-blue-600" />
+                      <div>
+                        <p className="text-sm font-medium text-blue-900">
+                          تم جدولة التفعيل
+                        </p>
+                        <p className="text-sm text-blue-800 mt-1">
+                          التاريخ: {studentActivateDate} | الوقت: {studentActivateTime}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -2529,15 +2553,23 @@ No header mapping needed.`);
                     <input
                       type="checkbox"
                       id="scheduleLecturerPage"
-                      checked={scheduleLecturerPage}
-                      onChange={(e) => setScheduleLecturerPage(e.target.checked)}
+                      checked={scheduleLecturerPage || !!(lecturerActivateDate && lecturerActivateTime)}
+                      onChange={(e) => {
+                        setScheduleLecturerPage(e.target.checked);
+                        if (!e.target.checked) {
+                          // If unchecking, clear scheduled activation
+                          setLecturerActivateDate("");
+                          setLecturerActivateTime("");
+                          updateSearchSettings("lecturer", false);
+                        }
+                      }}
                       className="w-4 h-4 text-purple-600 rounded"
                     />
                     <label htmlFor="scheduleLecturerPage" className="text-sm font-medium text-gray-700">
                       جدولة التفعيل
                     </label>
                   </div>
-                  {scheduleLecturerPage && (
+                  {(scheduleLecturerPage || (lecturerActivateDate && lecturerActivateTime)) && (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1">التاريخ (YYYY-MM-DD)</label>
@@ -2559,7 +2591,7 @@ No header mapping needed.`);
                       </div>
                     </div>
                   )}
-                  {scheduleLecturerPage && lecturerActivateDate && lecturerActivateTime && (
+                  {(scheduleLecturerPage || (lecturerActivateDate && lecturerActivateTime)) && lecturerActivateDate && lecturerActivateTime && (
                     <button
                       onClick={() => updateSearchSettings("lecturer")}
                       disabled={loadingSettings}
@@ -2569,13 +2601,16 @@ No header mapping needed.`);
                     </button>
                   )}
                   {lecturerActivateDate && lecturerActivateTime && (
-                    <div className="bg-purple-100 border border-purple-300 rounded-md p-3">
-                      <p className="text-sm font-medium text-purple-900">
-                        مجدول للتفعيل:
-                      </p>
-                      <p className="text-sm text-purple-800 mt-1">
-                        التاريخ: {lecturerActivateDate} | الوقت: {lecturerActivateTime}
-                      </p>
+                    <div className="bg-purple-100 border border-purple-300 rounded-md p-3 flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-purple-600" />
+                      <div>
+                        <p className="text-sm font-medium text-purple-900">
+                          تم جدولة التفعيل
+                        </p>
+                        <p className="text-sm text-purple-800 mt-1">
+                          التاريخ: {lecturerActivateDate} | الوقت: {lecturerActivateTime}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
