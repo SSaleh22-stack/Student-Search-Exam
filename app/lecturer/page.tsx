@@ -126,8 +126,8 @@ export default function LecturerPage() {
       header.style.padding = "30px";
       header.style.textAlign = "center";
       header.innerHTML = `
-        <h1 style="margin: 0; font-size: 32px; font-weight: bold; margin-bottom: 10px;">جدول امتحانات المحاضرين</h1>
-        <p style="margin: 0; font-size: 18px;">اسم المحاضر: ${lecturerName}</p>
+        <h1 style="margin: 0; font-size: 42px; font-weight: bold; margin-bottom: 10px;">جدول امتحانات المحاضرين</h1>
+        <p style="margin: 0; font-size: 24px;">اسم المحاضر: ${lecturerName}</p>
       `;
       wrapper.appendChild(header);
       
@@ -151,10 +151,10 @@ export default function LecturerPage() {
       headers.forEach(headerText => {
         const th = document.createElement("th");
         th.textContent = headerText;
-        th.style.padding = "18px 14px";
+        th.style.padding = "22px 16px";
         th.style.textAlign = "right";
         th.style.fontWeight = "bold";
-        th.style.fontSize = "16px";
+        th.style.fontSize = "22px";
         th.style.color = "#1f2937";
         th.style.borderRight = "1px solid #e5e7eb";
         headerRow.appendChild(th);
@@ -185,9 +185,9 @@ export default function LecturerPage() {
         cells.forEach((cellText, cellIndex) => {
           const td = document.createElement("td");
           td.textContent = cellText;
-          td.style.padding = "16px 14px";
+          td.style.padding = "20px 16px";
           td.style.textAlign = "right";
-          td.style.fontSize = "15px";
+          td.style.fontSize = "20px";
           td.style.color = "#111827";
           td.style.borderRight = "1px solid #e5e7eb";
           row.appendChild(td);
@@ -206,7 +206,7 @@ export default function LecturerPage() {
       summary.style.borderRadius = "6px";
       summary.style.textAlign = "right";
       summary.innerHTML = `
-        <p style="margin: 0; font-size: 14px; font-weight: bold; color: #1f2937;">
+        <p style="margin: 0; font-size: 18px; font-weight: bold; color: #1f2937;">
           إجمالي عدد الامتحانات: ${exams.length}
         </p>
       `;
@@ -219,7 +219,7 @@ export default function LecturerPage() {
       footer.style.textAlign = "center";
       footer.style.padding = "15px";
       footer.style.color = "#6b7280";
-      footer.style.fontSize = "11px";
+      footer.style.fontSize = "16px";
       footer.style.borderTop = "1px solid #e5e7eb";
       footer.textContent = `تاريخ الطباعة: ${new Date().toLocaleDateString("ar-SA")}`;
       wrapper.appendChild(footer);
@@ -316,8 +316,8 @@ export default function LecturerPage() {
       header.style.padding = "30px";
       header.style.textAlign = "center";
       header.innerHTML = `
-        <h1 style="margin: 0; font-size: 36px; font-weight: bold; margin-bottom: 10px;">جدول امتحانات المحاضرين</h1>
-        <p style="margin: 0; font-size: 20px;">اسم المحاضر: ${lecturerName}</p>
+        <h1 style="margin: 0; font-size: 46px; font-weight: bold; margin-bottom: 10px;">جدول امتحانات المحاضرين</h1>
+        <p style="margin: 0; font-size: 26px;">اسم المحاضر: ${lecturerName}</p>
       `;
       wrapper.appendChild(header);
       
@@ -341,10 +341,10 @@ export default function LecturerPage() {
       headers.forEach(headerText => {
         const th = document.createElement("th");
         th.textContent = headerText;
-        th.style.padding = "20px 16px";
+        th.style.padding = "24px 18px";
         th.style.textAlign = "right";
         th.style.fontWeight = "bold";
-        th.style.fontSize = "18px";
+        th.style.fontSize = "24px";
         th.style.color = "#1f2937";
         th.style.borderRight = "1px solid #e5e7eb";
         headerRow.appendChild(th);
@@ -375,9 +375,9 @@ export default function LecturerPage() {
         cells.forEach((cellText, cellIndex) => {
           const td = document.createElement("td");
           td.textContent = cellText;
-          td.style.padding = "18px 16px";
+          td.style.padding = "22px 18px";
           td.style.textAlign = "right";
-          td.style.fontSize = "17px";
+          td.style.fontSize = "22px";
           td.style.color = "#111827";
           td.style.borderRight = "1px solid #e5e7eb";
           row.appendChild(td);
@@ -396,7 +396,7 @@ export default function LecturerPage() {
       summary.style.borderRadius = "6px";
       summary.style.textAlign = "right";
       summary.innerHTML = `
-        <p style="margin: 0; font-size: 14px; font-weight: bold; color: #1f2937;">
+        <p style="margin: 0; font-size: 18px; font-weight: bold; color: #1f2937;">
           إجمالي عدد الامتحانات: ${exams.length}
         </p>
       `;
@@ -409,7 +409,7 @@ export default function LecturerPage() {
       footer.style.textAlign = "center";
       footer.style.padding = "15px";
       footer.style.color = "#6b7280";
-      footer.style.fontSize = "11px";
+      footer.style.fontSize = "16px";
       footer.style.borderTop = "1px solid #e5e7eb";
       footer.textContent = `تاريخ الطباعة: ${new Date().toLocaleDateString("ar-SA")}`;
       wrapper.appendChild(footer);

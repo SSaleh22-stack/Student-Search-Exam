@@ -1382,12 +1382,7 @@ No header mapping needed.`);
               height={48}
               className="h-12 w-auto"
             />
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">لوحة التحكم</h1>
-              {currentAdmin?.name && (
-                <p className="text-lg text-gray-600 mt-1">مرحبا، {currentAdmin.name}</p>
-              )}
-            </div>
+            <h1 className="text-3xl font-bold text-gray-900">لوحة التحكم</h1>
           </div>
           <div className="flex items-center gap-3">
             {currentAdmin?.isHeadAdmin && (
@@ -1430,6 +1425,12 @@ No header mapping needed.`);
         {success && (
           <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md mb-4">
             {success}
+          </div>
+        )}
+
+        {currentAdmin?.name && (
+          <div className="mb-4">
+            <p className="text-2xl text-gray-700">مرحبا، {currentAdmin.name}</p>
           </div>
         )}
 
