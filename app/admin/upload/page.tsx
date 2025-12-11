@@ -540,9 +540,9 @@ export default function AdminUploadPage() {
       
       // Show success message based on what was saved
       if (type === "student" && data.studentActivateDate && data.studentActivateTime) {
-        setSuccess(`تم جدولة التفعيل\n\nالتاريخ: ${data.studentActivateDate} | الوقت: ${data.studentActivateTime}`);
+        setSuccess(`تم جدولة التفعيل التاريخ: ${data.studentActivateDate} | الوقت: ${data.studentActivateTime}`);
       } else if (type === "lecturer" && data.lecturerActivateDate && data.lecturerActivateTime) {
-        setSuccess(`تم جدولة التفعيل\n\nالتاريخ: ${data.lecturerActivateDate} | الوقت: ${data.lecturerActivateTime}`);
+        setSuccess(`تم جدولة التفعيل التاريخ: ${data.lecturerActivateDate} | الوقت: ${data.lecturerActivateTime}`);
       } else if (isActive !== undefined) {
         setSuccess(`تم ${isActive ? "تفعيل" : "إلغاء تفعيل"} صفحة البحث ${type === "student" ? "للطلاب" : "للمحاضرين"} بنجاح`);
       }
