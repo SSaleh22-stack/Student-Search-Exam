@@ -24,10 +24,19 @@ export async function checkScheduledDatasetActivations() {
     for (const dataset of scheduledDatasets) {
       if (!dataset.activateDate || !dataset.activateTime) continue;
 
-      // Parse the scheduled date/time (assumes local timezone)
+      // Parse the scheduled date/time using the stored timezone offset
       const [year, month, day] = dataset.activateDate.split('-').map(Number);
       const [hours, minutes] = dataset.activateTime.split(':').map(Number);
-      const scheduledDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+      
+      // Get timezone offset in minutes (positive for timezones ahead of UTC, e.g., 180 for UTC+3)
+      // Default to server timezone if not stored (for backward compatibility)
+      const timezoneOffsetMinutes = dataset.activateTimezoneOffset ?? (now.getTimezoneOffset() * -1);
+      
+      // Create the scheduled time as if it's in the user's timezone
+      // First create in UTC, then subtract the offset to get the actual UTC time
+      // Example: 19:45 UTC+3 means 16:45 UTC
+      const scheduledDateTimeUTC = Date.UTC(year, month - 1, day, hours, minutes, 0, 0) - (timezoneOffsetMinutes * 60 * 1000);
+      const scheduledDateTime = new Date(scheduledDateTimeUTC);
       
       // Check if scheduled date/time has passed
       if (now >= scheduledDateTime) {
@@ -95,10 +104,19 @@ export async function checkScheduledPageActivations() {
 
     // Check student page activation
     if (settings.studentActivateDate && settings.studentActivateTime) {
-      // Parse the scheduled date/time (assumes local timezone)
+      // Parse the scheduled date/time using the stored timezone offset
       const [year, month, day] = settings.studentActivateDate.split('-').map(Number);
       const [hours, minutes] = settings.studentActivateTime.split(':').map(Number);
-      const scheduledDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+      
+      // Get timezone offset in minutes (positive for timezones ahead of UTC, e.g., 180 for UTC+3)
+      // Default to server timezone if not stored (for backward compatibility)
+      const timezoneOffsetMinutes = settings.studentActivateTimezoneOffset ?? (now.getTimezoneOffset() * -1);
+      
+      // Create the scheduled time as if it's in the user's timezone
+      // First create in UTC, then subtract the offset to get the actual UTC time
+      // Example: 19:45 UTC+3 means 16:45 UTC
+      const scheduledDateTimeUTC = Date.UTC(year, month - 1, day, hours, minutes, 0, 0) - (timezoneOffsetMinutes * 60 * 1000);
+      const scheduledDateTime = new Date(scheduledDateTimeUTC);
       
       // Only activate if scheduled time has passed and page is not already active
       if (now >= scheduledDateTime && !settings.studentSearchActive) {
@@ -127,10 +145,19 @@ export async function checkScheduledPageActivations() {
 
     // Check lecturer page activation
     if (settings.lecturerActivateDate && settings.lecturerActivateTime) {
-      // Parse the scheduled date/time (assumes local timezone)
+      // Parse the scheduled date/time using the stored timezone offset
       const [year, month, day] = settings.lecturerActivateDate.split('-').map(Number);
       const [hours, minutes] = settings.lecturerActivateTime.split(':').map(Number);
-      const scheduledDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
+      
+      // Get timezone offset in minutes (positive for timezones ahead of UTC, e.g., 180 for UTC+3)
+      // Default to server timezone if not stored (for backward compatibility)
+      const timezoneOffsetMinutes = settings.lecturerActivateTimezoneOffset ?? (now.getTimezoneOffset() * -1);
+      
+      // Create the scheduled time as if it's in the user's timezone
+      // First create in UTC, then subtract the offset to get the actual UTC time
+      // Example: 19:45 UTC+3 means 16:45 UTC
+      const scheduledDateTimeUTC = Date.UTC(year, month - 1, day, hours, minutes, 0, 0) - (timezoneOffsetMinutes * 60 * 1000);
+      const scheduledDateTime = new Date(scheduledDateTimeUTC);
       
       // Only activate if scheduled time has passed and page is not already active
       if (now >= scheduledDateTime && !settings.lecturerSearchActive) {

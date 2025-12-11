@@ -71,8 +71,10 @@ export async function POST(request: NextRequest) {
       lecturerSearchActive,
       studentActivateDate,
       studentActivateTime,
+      studentActivateTimezoneOffset,
       lecturerActivateDate,
       lecturerActivateTime,
+      lecturerActivateTimezoneOffset,
     } = await request.json();
 
     // Build update object - only include fields that are explicitly provided (not undefined)
@@ -112,6 +114,7 @@ export async function POST(request: NextRequest) {
       }
       updateData.studentActivateDate = studentActivateDate || null;
       updateData.studentActivateTime = studentActivateTime || null;
+      updateData.studentActivateTimezoneOffset = studentActivateTimezoneOffset ?? (studentActivateDate && studentActivateTime ? new Date().getTimezoneOffset() * -1 : null);
       // Don't activate immediately if scheduling
       if (studentActivateDate && studentActivateTime) {
         updateData.studentSearchActive = false;
@@ -136,6 +139,7 @@ export async function POST(request: NextRequest) {
       }
       updateData.lecturerActivateDate = lecturerActivateDate || null;
       updateData.lecturerActivateTime = lecturerActivateTime || null;
+      updateData.lecturerActivateTimezoneOffset = lecturerActivateTimezoneOffset ?? (lecturerActivateDate && lecturerActivateTime ? new Date().getTimezoneOffset() * -1 : null);
       // Don't activate immediately if scheduling
       if (lecturerActivateDate && lecturerActivateTime) {
         updateData.lecturerSearchActive = false;
@@ -152,6 +156,7 @@ export async function POST(request: NextRequest) {
         updateData.studentSearchActive = true;
         updateData.studentActivateDate = null;
         updateData.studentActivateTime = null;
+        updateData.studentActivateTimezoneOffset = null;
       }
     }
     
@@ -162,6 +167,7 @@ export async function POST(request: NextRequest) {
         updateData.lecturerSearchActive = true;
         updateData.lecturerActivateDate = null;
         updateData.lecturerActivateTime = null;
+        updateData.lecturerActivateTimezoneOffset = null;
       }
     }
 
@@ -175,8 +181,10 @@ export async function POST(request: NextRequest) {
         lecturerSearchActive: lecturerSearchActive !== undefined ? lecturerSearchActive : true,
         studentActivateDate: studentActivateDate || null,
         studentActivateTime: studentActivateTime || null,
+        studentActivateTimezoneOffset: studentActivateTimezoneOffset ?? (studentActivateDate && studentActivateTime ? new Date().getTimezoneOffset() * -1 : null),
         lecturerActivateDate: lecturerActivateDate || null,
         lecturerActivateTime: lecturerActivateTime || null,
+        lecturerActivateTimezoneOffset: lecturerActivateTimezoneOffset ?? (lecturerActivateDate && lecturerActivateTime ? new Date().getTimezoneOffset() * -1 : null),
       },
     });
 

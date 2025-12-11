@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { datasetId, activateDate, activateTime } = await request.json();
+    const { datasetId, activateDate, activateTime, timezoneOffset } = await request.json();
 
     if (!datasetId) {
       return NextResponse.json(
@@ -128,14 +128,15 @@ export async function POST(request: NextRequest) {
         });
       }
       
-      await prisma.dataset.update({
-        where: { id: datasetId },
-        data: { 
-          isActive: !dataset.isActive,
-          activateDate: null,
-          activateTime: null,
-        },
-      });
+        await prisma.dataset.update({
+          where: { id: datasetId },
+          data: { 
+            isActive: !dataset.isActive,
+            activateDate: null,
+            activateTime: null,
+            activateTimezoneOffset: null,
+          },
+        });
     }
 
     // Check for any other scheduled activations that might be due

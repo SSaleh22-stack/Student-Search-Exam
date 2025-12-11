@@ -466,10 +466,12 @@ export default function AdminUploadPage() {
           body.studentSearchActive = isActive;
           body.studentActivateDate = null;
           body.studentActivateTime = null;
+          body.studentActivateTimezoneOffset = null;
         } else if ((scheduleStudentPage || (studentActivateDate && studentActivateTime)) && studentActivateDate && studentActivateTime) {
-          // Schedule activation
+          // Schedule activation - include timezone offset
           body.studentActivateDate = studentActivateDate;
           body.studentActivateTime = studentActivateTime;
+          body.studentActivateTimezoneOffset = new Date().getTimezoneOffset() * -1; // Convert to offset from UTC (negative because getTimezoneOffset returns opposite)
         }
       } else {
         if (isActive !== undefined) {
@@ -477,10 +479,14 @@ export default function AdminUploadPage() {
           body.lecturerSearchActive = isActive;
           body.lecturerActivateDate = null;
           body.lecturerActivateTime = null;
+          body.lecturerActivateTimezoneOffset = null;
         } else if ((scheduleLecturerPage || (lecturerActivateDate && lecturerActivateTime)) && lecturerActivateDate && lecturerActivateTime) {
-          // Schedule activation
+          // Schedule activation - include timezone offset from client
           body.lecturerActivateDate = lecturerActivateDate;
           body.lecturerActivateTime = lecturerActivateTime;
+          // Get timezone offset in minutes (positive for timezones ahead of UTC)
+          // getTimezoneOffset() returns negative for timezones ahead of UTC, so we negate it
+          body.lecturerActivateTimezoneOffset = new Date().getTimezoneOffset() * -1;
         }
       }
 
@@ -517,9 +523,9 @@ export default function AdminUploadPage() {
       
       // Show success message based on what was saved
       if (type === "student" && data.studentActivateDate && data.studentActivateTime) {
-        setSuccess(`تم جدولة التفعيل\nالتاريخ: ${data.studentActivateDate} | الوقت: ${data.studentActivateTime}`);
+        setSuccess(`تم جدولة التفعيل\n\nالتاريخ: ${data.studentActivateDate} | الوقت: ${data.studentActivateTime}`);
       } else if (type === "lecturer" && data.lecturerActivateDate && data.lecturerActivateTime) {
-        setSuccess(`تم جدولة التفعيل\nالتاريخ: ${data.lecturerActivateDate} | الوقت: ${data.lecturerActivateTime}`);
+        setSuccess(`تم جدولة التفعيل\n\nالتاريخ: ${data.lecturerActivateDate} | الوقت: ${data.lecturerActivateTime}`);
       } else if (isActive !== undefined) {
         setSuccess(`تم ${isActive ? "تفعيل" : "إلغاء تفعيل"} صفحة البحث ${type === "student" ? "للطلاب" : "للمحاضرين"} بنجاح`);
       }
@@ -1598,7 +1604,7 @@ No header mapping needed.`);
         )}
 
         {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md mb-4">
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md mb-4 whitespace-pre-line">
             {success}
           </div>
         )}
@@ -2520,16 +2526,6 @@ No header mapping needed.`);
                           />
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setStudentActivateDate(currentLocalDate);
-                          setStudentActivateTime(currentLocalTime);
-                        }}
-                        className="w-full px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-xs font-medium"
-                      >
-                        استخدام الوقت الحالي
-                      </button>
                     </div>
                   )}
                   {(scheduleStudentPage || (studentActivateDate && studentActivateTime)) && studentActivateDate && studentActivateTime && (
@@ -2654,16 +2650,6 @@ No header mapping needed.`);
                           />
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setLecturerActivateDate(currentLocalDate);
-                          setLecturerActivateTime(currentLocalTime);
-                        }}
-                        className="w-full px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-xs font-medium"
-                      >
-                        استخدام الوقت الحالي
-                      </button>
                     </div>
                   )}
                   {(scheduleLecturerPage || (lecturerActivateDate && lecturerActivateTime)) && lecturerActivateDate && lecturerActivateTime && (

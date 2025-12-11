@@ -18,6 +18,7 @@ model Dataset {
   type         String?  @default("student") // "student" or "lecturer"
   activateDate String?  // Scheduled activation date in YYYY-MM-DD format
   activateTime String?  // Scheduled activation time in HH:MM format
+  activateTimezoneOffset Int? // Timezone offset in minutes (e.g., 180 for UTC+3)
   
   courseExams  CourseExam[]
   enrollments  Enrollment[]
@@ -91,8 +92,10 @@ model Settings {
   lecturerSearchActive Boolean @default(true)
   studentActivateDate String?  // Scheduled activation date for student page (YYYY-MM-DD)
   studentActivateTime String?  // Scheduled activation time for student page (HH:MM)
+  studentActivateTimezoneOffset Int? // Timezone offset in minutes for student page
   lecturerActivateDate String? // Scheduled activation date for lecturer page (YYYY-MM-DD)
   lecturerActivateTime String? // Scheduled activation time for lecturer page (HH:MM)
+  lecturerActivateTimezoneOffset Int? // Timezone offset in minutes for lecturer page
   updatedAt         DateTime @updatedAt
 }
 
