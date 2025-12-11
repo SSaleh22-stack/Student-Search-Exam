@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkAllScheduledActivations } from "@/lib/scheduled-activation";
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,9 @@ export async function GET() {
     if (!isAuthenticated) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Check for scheduled activations before fetching settings
+    await checkAllScheduledActivations();
 
     // Get or create settings
     let settings = await prisma.settings.findUnique({
@@ -138,6 +142,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Check if scheduled times are in the past and activate immediately if so
+    const now = new Date();
+    
+    if (studentActivateDate && studentActivateTime) {
+      const scheduledDateTime = new Date(`${studentActivateDate}T${studentActivateTime}`);
+      if (now >= scheduledDateTime) {
+        // Scheduled time has passed, activate immediately
+        updateData.studentSearchActive = true;
+        updateData.studentActivateDate = null;
+        updateData.studentActivateTime = null;
+      }
+    }
+    
+    if (lecturerActivateDate && lecturerActivateTime) {
+      const scheduledDateTime = new Date(`${lecturerActivateDate}T${lecturerActivateTime}`);
+      if (now >= scheduledDateTime) {
+        // Scheduled time has passed, activate immediately
+        updateData.lecturerSearchActive = true;
+        updateData.lecturerActivateDate = null;
+        updateData.lecturerActivateTime = null;
+      }
+    }
+
     // Update or create settings
     const settings = await prisma.settings.upsert({
       where: { id: "settings" },
@@ -152,6 +179,9 @@ export async function POST(request: NextRequest) {
         lecturerActivateTime: lecturerActivateTime || null,
       },
     });
+
+    // Check for any other scheduled activations that might be due
+    await checkAllScheduledActivations();
 
     return NextResponse.json({
       studentSearchActive: settings.studentSearchActive,

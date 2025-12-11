@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Upload, FileSpreadsheet, CheckCircle, XCircle, Loader2, LogOut, RefreshCw, Settings, Info, ChevronDown, ChevronUp, User, Users, X, Trash2, CheckSquare, Square, Shield, Plus, Edit2 } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle, XCircle, Loader2, LogOut, RefreshCw, Settings, Info, ChevronDown, ChevronUp, User, Users, X, Trash2, CheckSquare, Square, Shield, Plus, Edit2, HelpCircle, Database, FileX, ToggleLeft } from "lucide-react";
 import { safeJsonParse } from "@/lib/utils";
 
 interface Dataset {
@@ -138,7 +138,7 @@ export default function AdminUploadPage() {
   const [scheduleActivation, setScheduleActivation] = useState(false);
   
   // Admin management (head admin only)
-  const [currentAdmin, setCurrentAdmin] = useState<{ username: string; name?: string; isHeadAdmin: boolean; canManageSettings?: boolean; canDeleteDatasets?: boolean } | null>(null);
+  const [currentAdmin, setCurrentAdmin] = useState<{ username: string; name?: string; isHeadAdmin: boolean; canUpload?: boolean; canManageDatasets?: boolean; canDeleteDatasets?: boolean; canManageSettings?: boolean } | null>(null);
   const [admins, setAdmins] = useState<any[]>([]);
   const [showAdminManagement, setShowAdminManagement] = useState(false);
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
@@ -211,6 +211,21 @@ export default function AdminUploadPage() {
     loadSettings();
     loadCurrentAdmin();
   }, [checkAuth, loadCurrentAdmin]);
+
+  // Close tooltip when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      // Don't close if clicking on help icon or tooltip itself
+      if (showTooltip && !target.closest('[data-tooltip-trigger]') && !target.closest('[data-tooltip-content]')) {
+        setShowTooltip(null);
+      }
+    };
+    if (showTooltip) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showTooltip]);
 
   const handleLogout = useCallback(async () => {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -592,17 +607,29 @@ export default function AdminUploadPage() {
               datasetId,
               ...activateData
             }),
+          }).then(async (res) => {
+            if (!res.ok) {
+              const errorData = await res.json().catch(() => ({}));
+              throw new Error(errorData.error || "فشل التفعيل");
+            }
+            return res;
           })
         )
       );
 
       const failed = results.filter(r => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok));
       if (failed.length > 0) {
-        throw new Error(`فشل تفعيل ${failed.length} مجموعة بيانات`);
+        const errorMessages = failed.map(r => {
+          if (r.status === "rejected") {
+            return r.reason?.message || "خطأ غير معروف";
+          }
+          return "فشل التفعيل";
+        });
+        throw new Error(`فشل تفعيل ${failed.length} مجموعة بيانات: ${errorMessages.join(", ")}`);
       }
 
       if (scheduleActivation) {
-        setSuccess(`تم جدولة تفعيل ${selectedDatasets.size} مجموعة بيانات في ${activateDate} ${activateTime}`);
+        setSuccess(`تم جدولة تفعيل ${selectedDatasets.size} مجموعة بيانات في ${activateDate} الساعة ${activateTime}`);
       } else {
         setSuccess(`تم تفعيل ${selectedDatasets.size} مجموعة بيانات بنجاح`);
       }
@@ -612,8 +639,8 @@ export default function AdminUploadPage() {
       setScheduleActivation(false);
       setActivateDate("");
       setActivateTime("");
-      loadDatasets();
-      setTimeout(() => setSuccess(null), 3000);
+      await loadDatasets();
+      setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "فشل تفعيل مجموعات البيانات");
     } finally {
@@ -1434,6 +1461,33 @@ No header mapping needed.`);
 
   const isProcessing = uploading || readingHeaders;
 
+  // Permission tooltip state
+  const [showTooltip, setShowTooltip] = useState<string | null>(null);
+
+  // Permission descriptions
+  const permissionDescriptions: Record<string, { icon: React.ReactNode; description: string }> = {
+    isHeadAdmin: {
+      icon: <Shield className="w-4 h-4 text-purple-600" />,
+      description: "رئيس المسؤولين: يمتلك جميع الصلاحيات ويمكنه إدارة المسؤولين الآخرين"
+    },
+    canUpload: {
+      icon: <Upload className="w-4 h-4 text-blue-600" />,
+      description: "رفع الملفات: يمكنه رفع ملفات Excel (جداول الامتحانات والتسجيلات)"
+    },
+    canManageDatasets: {
+      icon: <Database className="w-4 h-4 text-green-600" />,
+      description: "إدارة مجموعات البيانات: يمكنه تفعيل/إلغاء تفعيل مجموعات البيانات"
+    },
+    canDeleteDatasets: {
+      icon: <FileX className="w-4 h-4 text-red-600" />,
+      description: "حذف مجموعات البيانات: يمكنه حذف مجموعات البيانات بشكل دائم (عملية لا يمكن التراجع عنها)"
+    },
+    canManageSettings: {
+      icon: <ToggleLeft className="w-4 h-4 text-indigo-600" />,
+      description: "إدارة الإعدادات: يمكنه تفعيل/إلغاء تفعيل صفحات البحث للطلاب والمحاضرين"
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative">
       {/* Loading Overlay */}
@@ -1545,6 +1599,7 @@ No header mapping needed.`);
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Upload Form */}
+          {(currentAdmin?.isHeadAdmin || currentAdmin?.canUpload) && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Upload className="w-5 h-5" />
@@ -1995,6 +2050,7 @@ No header mapping needed.`);
               </button>
             </form>
           </div>
+          )}
 
           {/* Dataset List */}
           <div className="bg-white rounded-lg shadow-lg p-6">
@@ -2020,20 +2076,24 @@ No header mapping needed.`);
                     </button>
                     {selectedDatasets.size > 0 && (
                       <>
-                        <button
-                          onClick={handleBulkActivate}
-                          disabled={loading}
-                          className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50"
-                        >
-                          تفعيل المحدد ({selectedDatasets.size})
-                        </button>
-                        <button
-                          onClick={handleBulkDeactivate}
-                          disabled={loading}
-                          className="px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 disabled:opacity-50"
-                        >
-                          إلغاء تفعيل المحدد ({selectedDatasets.size})
-                        </button>
+                        {(currentAdmin?.isHeadAdmin || currentAdmin?.canManageDatasets) && (
+                          <>
+                            <button
+                              onClick={handleBulkActivate}
+                              disabled={loading}
+                              className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50"
+                            >
+                              تفعيل المحدد ({selectedDatasets.size})
+                            </button>
+                            <button
+                              onClick={handleBulkDeactivate}
+                              disabled={loading}
+                              className="px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 disabled:opacity-50"
+                            >
+                              إلغاء تفعيل المحدد ({selectedDatasets.size})
+                            </button>
+                          </>
+                        )}
                         {(currentAdmin?.isHeadAdmin || currentAdmin?.canDeleteDatasets) && (
                           <button
                             onClick={handleBulkDelete}
@@ -2716,7 +2776,7 @@ No header mapping needed.`);
                       />
                     </div>
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 relative">
                         <input
                           type="checkbox"
                           id="editAdminIsHead"
@@ -2724,11 +2784,29 @@ No header mapping needed.`);
                           onChange={(e) => setEditAdminIsHead(e.target.checked)}
                           className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                         />
-                        <label htmlFor="editAdminIsHead" className="text-sm text-gray-700">
+                        <label htmlFor="editAdminIsHead" className="text-sm text-gray-700 flex items-center gap-1">
                           رئيس المسؤولين
                         </label>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            data-tooltip-trigger
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowTooltip(showTooltip === "isHeadAdmin" ? null : "isHeadAdmin");
+                            }}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <HelpCircle className="w-4 h-4 cursor-help" />
+                          </button>
+                          {showTooltip === "isHeadAdmin" && (
+                            <div data-tooltip-content className="absolute right-0 bottom-full mb-2 w-64 p-2 bg-gray-900 text-white text-xs rounded-md z-20 shadow-lg">
+                              {permissionDescriptions.isHeadAdmin.description}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 relative">
                         <input
                           type="checkbox"
                           id="editAdminCanUpload"
@@ -2736,11 +2814,30 @@ No header mapping needed.`);
                           onChange={(e) => setEditAdminCanUpload(e.target.checked)}
                           className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         />
-                        <label htmlFor="editAdminCanUpload" className="text-sm text-gray-700">
+                        <label htmlFor="editAdminCanUpload" className="text-sm text-gray-700 flex items-center gap-1">
+                          {permissionDescriptions.canUpload.icon}
                           يمكنه رفع الملفات
                         </label>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            data-tooltip-trigger
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowTooltip(showTooltip === "canUpload" ? null : "canUpload");
+                            }}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <HelpCircle className="w-4 h-4 cursor-help" />
+                          </button>
+                          {showTooltip === "canUpload" && (
+                            <div data-tooltip-content className="absolute right-0 bottom-full mb-2 w-64 p-2 bg-gray-900 text-white text-xs rounded-md z-20 shadow-lg">
+                              {permissionDescriptions.canUpload.description}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 relative">
                         <input
                           type="checkbox"
                           id="editAdminCanManageDatasets"
@@ -2748,11 +2845,30 @@ No header mapping needed.`);
                           onChange={(e) => setEditAdminCanManageDatasets(e.target.checked)}
                           className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         />
-                        <label htmlFor="editAdminCanManageDatasets" className="text-sm text-gray-700">
+                        <label htmlFor="editAdminCanManageDatasets" className="text-sm text-gray-700 flex items-center gap-1">
+                          {permissionDescriptions.canManageDatasets.icon}
                           يمكنه إدارة مجموعات البيانات
                         </label>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            data-tooltip-trigger
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowTooltip(showTooltip === "canManageDatasets" ? null : "canManageDatasets");
+                            }}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <HelpCircle className="w-4 h-4 cursor-help" />
+                          </button>
+                          {showTooltip === "canManageDatasets" && (
+                            <div data-tooltip-content className="absolute right-0 bottom-full mb-2 w-64 p-2 bg-gray-900 text-white text-xs rounded-md z-20 shadow-lg">
+                              {permissionDescriptions.canManageDatasets.description}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 relative">
                         <input
                           type="checkbox"
                           id="editAdminCanDeleteDatasets"
@@ -2760,11 +2876,30 @@ No header mapping needed.`);
                           onChange={(e) => setEditAdminCanDeleteDatasets(e.target.checked)}
                           className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
                         />
-                        <label htmlFor="editAdminCanDeleteDatasets" className="text-sm text-gray-700">
+                        <label htmlFor="editAdminCanDeleteDatasets" className="text-sm text-gray-700 flex items-center gap-1">
+                          {permissionDescriptions.canDeleteDatasets.icon}
                           يمكنه حذف مجموعات البيانات
                         </label>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            data-tooltip-trigger
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowTooltip(showTooltip === "canDeleteDatasets" ? null : "canDeleteDatasets");
+                            }}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <HelpCircle className="w-4 h-4 cursor-help" />
+                          </button>
+                          {showTooltip === "canDeleteDatasets" && (
+                            <div data-tooltip-content className="absolute right-0 bottom-full mb-2 w-64 p-2 bg-gray-900 text-white text-xs rounded-md z-20 shadow-lg">
+                              {permissionDescriptions.canDeleteDatasets.description}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 relative">
                         <input
                           type="checkbox"
                           id="editAdminCanManageSettings"
@@ -2772,9 +2907,28 @@ No header mapping needed.`);
                           onChange={(e) => setEditAdminCanManageSettings(e.target.checked)}
                           className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         />
-                        <label htmlFor="editAdminCanManageSettings" className="text-sm text-gray-700">
+                        <label htmlFor="editAdminCanManageSettings" className="text-sm text-gray-700 flex items-center gap-1">
+                          {permissionDescriptions.canManageSettings.icon}
                           يمكنه إدارة إعدادات صفحات البحث
                         </label>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            data-tooltip-trigger
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowTooltip(showTooltip === "canManageSettings" ? null : "canManageSettings");
+                            }}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <HelpCircle className="w-4 h-4 cursor-help" />
+                          </button>
+                          {showTooltip === "canManageSettings" && (
+                            <div data-tooltip-content className="absolute right-0 bottom-full mb-2 w-64 p-2 bg-gray-900 text-white text-xs rounded-md z-20 shadow-lg">
+                              {permissionDescriptions.canManageSettings.description}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2902,7 +3056,7 @@ No header mapping needed.`);
                     رئيس المسؤولين
                   </label>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 relative">
                   <input
                     type="checkbox"
                     id="newAdminCanUpload"
@@ -2910,11 +3064,30 @@ No header mapping needed.`);
                     onChange={(e) => setNewAdminCanUpload(e.target.checked)}
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
-                  <label htmlFor="newAdminCanUpload" className="text-sm text-gray-700">
+                  <label htmlFor="newAdminCanUpload" className="text-sm text-gray-700 flex items-center gap-1">
+                    {permissionDescriptions.canUpload.icon}
                     يمكنه رفع الملفات
                   </label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      data-tooltip-trigger
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowTooltip(showTooltip === "newCanUpload" ? null : "newCanUpload");
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <HelpCircle className="w-4 h-4 cursor-help" />
+                    </button>
+                    {showTooltip === "newCanUpload" && (
+                      <div data-tooltip-content className="absolute right-0 bottom-full mb-2 w-64 p-2 bg-gray-900 text-white text-xs rounded-md z-20 shadow-lg">
+                        {permissionDescriptions.canUpload.description}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 relative">
                   <input
                     type="checkbox"
                     id="newAdminCanManageDatasets"
@@ -2922,11 +3095,30 @@ No header mapping needed.`);
                     onChange={(e) => setNewAdminCanManageDatasets(e.target.checked)}
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
-                  <label htmlFor="newAdminCanManageDatasets" className="text-sm text-gray-700">
+                  <label htmlFor="newAdminCanManageDatasets" className="text-sm text-gray-700 flex items-center gap-1">
+                    {permissionDescriptions.canManageDatasets.icon}
                     يمكنه إدارة مجموعات البيانات
                   </label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      data-tooltip-trigger
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowTooltip(showTooltip === "newCanManageDatasets" ? null : "newCanManageDatasets");
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <HelpCircle className="w-4 h-4 cursor-help" />
+                    </button>
+                    {showTooltip === "newCanManageDatasets" && (
+                      <div data-tooltip-content className="absolute right-0 bottom-full mb-2 w-64 p-2 bg-gray-900 text-white text-xs rounded-md z-20 shadow-lg">
+                        {permissionDescriptions.canManageDatasets.description}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 relative">
                   <input
                     type="checkbox"
                     id="newAdminCanDeleteDatasets"
@@ -2934,11 +3126,30 @@ No header mapping needed.`);
                     onChange={(e) => setNewAdminCanDeleteDatasets(e.target.checked)}
                     className="w-4 h-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
                   />
-                  <label htmlFor="newAdminCanDeleteDatasets" className="text-sm text-gray-700">
+                  <label htmlFor="newAdminCanDeleteDatasets" className="text-sm text-gray-700 flex items-center gap-1">
+                    {permissionDescriptions.canDeleteDatasets.icon}
                     يمكنه حذف مجموعات البيانات
                   </label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      data-tooltip-trigger
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowTooltip(showTooltip === "newCanDeleteDatasets" ? null : "newCanDeleteDatasets");
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <HelpCircle className="w-4 h-4 cursor-help" />
+                    </button>
+                    {showTooltip === "newCanDeleteDatasets" && (
+                      <div data-tooltip-content className="absolute right-0 bottom-full mb-2 w-64 p-2 bg-gray-900 text-white text-xs rounded-md z-20 shadow-lg">
+                        {permissionDescriptions.canDeleteDatasets.description}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 relative">
                   <input
                     type="checkbox"
                     id="newAdminCanManageSettings"
@@ -2946,9 +3157,28 @@ No header mapping needed.`);
                     onChange={(e) => setNewAdminCanManageSettings(e.target.checked)}
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
-                  <label htmlFor="newAdminCanManageSettings" className="text-sm text-gray-700">
+                  <label htmlFor="newAdminCanManageSettings" className="text-sm text-gray-700 flex items-center gap-1">
+                    {permissionDescriptions.canManageSettings.icon}
                     يمكنه إدارة إعدادات صفحات البحث
                   </label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      data-tooltip-trigger
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowTooltip(showTooltip === "newCanManageSettings" ? null : "newCanManageSettings");
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <HelpCircle className="w-4 h-4 cursor-help" />
+                    </button>
+                    {showTooltip === "newCanManageSettings" && (
+                      <div data-tooltip-content className="absolute right-0 bottom-full mb-2 w-64 p-2 bg-gray-900 text-white text-xs rounded-md z-20 shadow-lg">
+                        {permissionDescriptions.canManageSettings.description}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex gap-2">

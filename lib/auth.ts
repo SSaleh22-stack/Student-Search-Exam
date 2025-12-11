@@ -7,8 +7,10 @@ export interface AdminInfo {
   username: string;
   name?: string;
   isHeadAdmin: boolean;
-  canManageSettings?: boolean;
+  canUpload?: boolean;
+  canManageDatasets?: boolean;
   canDeleteDatasets?: boolean;
+  canManageSettings?: boolean;
 }
 
 export async function verifyAdmin(username: string, password: string): Promise<AdminInfo | null> {
@@ -91,8 +93,10 @@ export async function getCurrentAdmin(): Promise<AdminInfo | null> {
           username: true,
           name: true,
           isHeadAdmin: true,
-          canManageSettings: true,
+          canUpload: true,
+          canManageDatasets: true,
           canDeleteDatasets: true,
+          canManageSettings: true,
         },
       });
 
@@ -108,8 +112,10 @@ export async function getCurrentAdmin(): Promise<AdminInfo | null> {
         username: admin.username,
         name: admin.name || undefined,
         isHeadAdmin: admin.isHeadAdmin,
-        canManageSettings: admin.canManageSettings || undefined,
+        canUpload: admin.canUpload || undefined,
+        canManageDatasets: admin.canManageDatasets || undefined,
         canDeleteDatasets: admin.canDeleteDatasets || undefined,
+        canManageSettings: admin.canManageSettings || undefined,
       };
     }
 
@@ -134,8 +140,10 @@ export async function getCurrentAdmin(): Promise<AdminInfo | null> {
         username: true,
         name: true,
         isHeadAdmin: true,
-        canManageSettings: true,
+        canUpload: true,
+        canManageDatasets: true,
         canDeleteDatasets: true,
+        canManageSettings: true,
       },
     });
 
@@ -148,8 +156,10 @@ export async function getCurrentAdmin(): Promise<AdminInfo | null> {
       username: admin.username,
       name: admin.name || undefined,
       isHeadAdmin: admin.isHeadAdmin,
-      canManageSettings: admin.canManageSettings || undefined,
+      canUpload: admin.canUpload || undefined,
+      canManageDatasets: admin.canManageDatasets || undefined,
       canDeleteDatasets: admin.canDeleteDatasets || undefined,
+      canManageSettings: admin.canManageSettings || undefined,
     };
   } catch (error) {
     console.error("Error getting current admin:", error);

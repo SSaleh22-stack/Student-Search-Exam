@@ -15,8 +15,10 @@ export async function GET() {
         username: admin.username,
         name: admin.name,
         isHeadAdmin: admin.isHeadAdmin,
-        canManageSettings: admin.canManageSettings ?? false,
+        canUpload: admin.canUpload ?? false,
+        canManageDatasets: admin.canManageDatasets ?? false,
         canDeleteDatasets: admin.canDeleteDatasets ?? false,
+        canManageSettings: admin.canManageSettings ?? false,
       }
     });
   } catch (error) {

@@ -1,14 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkAllScheduledActivations } from "@/lib/scheduled-activation";
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const isAuthenticated = await checkSession();
-    if (!isAuthenticated) {
+    const { getCurrentAdmin } = await import("@/lib/auth");
+    const admin = await getCurrentAdmin();
+    
+    if (!admin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check if admin has permission to manage datasets
+    // Head admins can always manage, or admins with canManageDatasets permission
+    if (!admin.isHeadAdmin && !admin.canManageDatasets) {
+      return NextResponse.json(
+        { error: "غير مصرح. ليس لديك صلاحية لإدارة مجموعات البيانات. يرجى الاتصال برئيس المسؤولين." },
+        { status: 403 }
+      );
     }
 
     const { datasetId, activateDate, activateTime } = await request.json();
@@ -51,17 +63,71 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Schedule activation - store date and time, but don't activate yet
-      await prisma.dataset.update({
-        where: { id: datasetId },
-        data: { 
-          activateDate,
-          activateTime,
-          isActive: false, // Will be activated at scheduled time
-        },
-      });
+      // Check if scheduled time is in the past
+      const scheduledDateTime = new Date(`${activateDate}T${activateTime}`);
+      const now = new Date();
+      
+      if (now >= scheduledDateTime) {
+        // Scheduled time has already passed, activate immediately
+        // First deactivate other datasets of the same type
+        if (dataset.type) {
+          await prisma.dataset.updateMany({
+            where: {
+              type: dataset.type,
+              id: { not: datasetId },
+            },
+            data: { isActive: false },
+          });
+        } else {
+          await prisma.dataset.updateMany({
+            where: {
+              type: null,
+              id: { not: datasetId },
+            },
+            data: { isActive: false },
+          });
+        }
+        
+        await prisma.dataset.update({
+          where: { id: datasetId },
+          data: { 
+            isActive: true,
+            activateDate: null,
+            activateTime: null,
+          },
+        });
+      } else {
+        // Schedule activation - store date and time, but don't activate yet
+        await prisma.dataset.update({
+          where: { id: datasetId },
+          data: { 
+            activateDate,
+            activateTime,
+            isActive: false, // Will be activated at scheduled time
+          },
+        });
+      }
     } else {
       // Activate immediately - clear any scheduled activation
+      // First deactivate other datasets of the same type
+      if (dataset.type) {
+        await prisma.dataset.updateMany({
+          where: {
+            type: dataset.type,
+            id: { not: datasetId },
+          },
+          data: { isActive: false },
+        });
+      } else {
+        await prisma.dataset.updateMany({
+          where: {
+            type: null,
+            id: { not: datasetId },
+          },
+          data: { isActive: false },
+        });
+      }
+      
       await prisma.dataset.update({
         where: { id: datasetId },
         data: { 
@@ -71,6 +137,9 @@ export async function POST(request: NextRequest) {
         },
       });
     }
+
+    // Check for any other scheduled activations that might be due
+    await checkAllScheduledActivations();
 
     return NextResponse.json({ success: true });
   } catch (error) {

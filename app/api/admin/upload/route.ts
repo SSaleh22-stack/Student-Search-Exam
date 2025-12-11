@@ -12,9 +12,20 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const isAuthenticated = await checkSession();
-    if (!isAuthenticated) {
+    const { getCurrentAdmin } = await import("@/lib/auth");
+    const admin = await getCurrentAdmin();
+    
+    if (!admin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check if admin has permission to upload files
+    // Head admins can always upload, or admins with canUpload permission
+    if (!admin.isHeadAdmin && !admin.canUpload) {
+      return NextResponse.json(
+        { error: "غير مصرح. ليس لديك صلاحية لرفع الملفات. يرجى الاتصال برئيس المسؤولين." },
+        { status: 403 }
+      );
     }
 
     const formData = await request.formData();

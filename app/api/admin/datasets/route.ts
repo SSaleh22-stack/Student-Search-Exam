@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkSession } from "@/lib/auth";
+import { checkAllScheduledActivations } from "@/lib/scheduled-activation";
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,9 @@ export async function GET() {
     if (!isAuthenticated) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Check for scheduled activations before fetching datasets
+    await checkAllScheduledActivations();
 
     const datasets = await prisma.dataset.findMany({
       orderBy: { createdAt: "desc" },

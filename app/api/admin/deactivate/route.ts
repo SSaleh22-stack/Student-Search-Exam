@@ -6,9 +6,20 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const isAuthenticated = await checkSession();
-    if (!isAuthenticated) {
+    const { getCurrentAdmin } = await import("@/lib/auth");
+    const admin = await getCurrentAdmin();
+    
+    if (!admin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check if admin has permission to manage datasets
+    // Head admins can always manage, or admins with canManageDatasets permission
+    if (!admin.isHeadAdmin && !admin.canManageDatasets) {
+      return NextResponse.json(
+        { error: "غير مصرح. ليس لديك صلاحية لإدارة مجموعات البيانات. يرجى الاتصال برئيس المسؤولين." },
+        { status: 403 }
+      );
     }
 
     const { datasetId } = await request.json();
