@@ -42,24 +42,40 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const isAuthenticated = await checkSession();
-    if (!isAuthenticated) {
+    const { getCurrentAdmin } = await import("@/lib/auth");
+    const admin = await getCurrentAdmin();
+    
+    if (!admin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check if admin has permission to manage settings
+    if (!admin.isHeadAdmin && !admin.canManageSettings) {
+      return NextResponse.json(
+        { error: "Unauthorized. You don't have permission to manage settings." },
+        { status: 403 }
+      );
     }
 
     const { studentSearchActive, lecturerSearchActive } = await request.json();
 
+    // Build update object - only include fields that are explicitly provided (not undefined)
+    const updateData: any = {};
+    if (studentSearchActive !== undefined) {
+      updateData.studentSearchActive = studentSearchActive;
+    }
+    if (lecturerSearchActive !== undefined) {
+      updateData.lecturerSearchActive = lecturerSearchActive;
+    }
+
     // Update or create settings
     const settings = await prisma.settings.upsert({
       where: { id: "settings" },
-      update: {
-        studentSearchActive: studentSearchActive ?? undefined,
-        lecturerSearchActive: lecturerSearchActive ?? undefined,
-      },
+      update: updateData,
       create: {
         id: "settings",
-        studentSearchActive: studentSearchActive ?? true,
-        lecturerSearchActive: lecturerSearchActive ?? true,
+        studentSearchActive: studentSearchActive !== undefined ? studentSearchActive : true,
+        lecturerSearchActive: lecturerSearchActive !== undefined ? lecturerSearchActive : true,
       },
     });
 

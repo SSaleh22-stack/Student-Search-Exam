@@ -6,6 +6,7 @@ export interface AdminInfo {
   id: string;
   username: string;
   isHeadAdmin: boolean;
+  canManageSettings?: boolean;
 }
 
 export async function verifyAdmin(username: string, password: string): Promise<AdminInfo | null> {
@@ -75,6 +76,7 @@ export async function getCurrentAdmin(): Promise<AdminInfo | null> {
         id: true,
         username: true,
         isHeadAdmin: true,
+        canManageSettings: true,
       },
     });
 

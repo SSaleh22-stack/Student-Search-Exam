@@ -120,7 +120,7 @@ export default function AdminUploadPage() {
   const [selectedDatasets, setSelectedDatasets] = useState<Set<string>>(new Set());
   
   // Admin management (head admin only)
-  const [currentAdmin, setCurrentAdmin] = useState<{ username: string; isHeadAdmin: boolean } | null>(null);
+  const [currentAdmin, setCurrentAdmin] = useState<{ username: string; isHeadAdmin: boolean; canManageSettings?: boolean } | null>(null);
   const [admins, setAdmins] = useState<any[]>([]);
   const [showAdminManagement, setShowAdminManagement] = useState(false);
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
@@ -1111,13 +1111,15 @@ No header mapping needed.`);
                 إدارة المسؤولين
               </button>
             )}
-            <button
-              onClick={() => setShowSettingsModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
-            >
-              <Settings className="w-4 h-4" />
-              إعدادات صفحات البحث
-            </button>
+            {(currentAdmin?.isHeadAdmin || currentAdmin?.canManageSettings) && (
+              <button
+                onClick={() => setShowSettingsModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                إعدادات صفحات البحث
+              </button>
+            )}
             <button
               onClick={handleLogout}
               className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 flex items-center gap-2"

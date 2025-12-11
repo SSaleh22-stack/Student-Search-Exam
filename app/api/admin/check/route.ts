@@ -14,6 +14,7 @@ export async function GET() {
       admin: {
         username: admin.username,
         isHeadAdmin: admin.isHeadAdmin,
+        canManageSettings: admin.canManageSettings ?? false,
       }
     });
   } catch (error) {
