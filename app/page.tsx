@@ -170,7 +170,7 @@ export default function HomePage() {
       headerRow.style.backgroundColor = "#f3f4f6";
       headerRow.style.borderBottom = "2px solid #d1d5db";
       
-      const headers = ["اسم المقرر", "رمز المقرر", "الفصل", "التاريخ", "الوقت", "المكان", "الفترة"];
+      const headers = ["اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "المكان", "الفترة"];
       headers.forEach(headerText => {
         const th = document.createElement("th");
         th.textContent = headerText;
@@ -324,9 +324,9 @@ export default function HomePage() {
     const html2canvas = (await import("html2canvas")).default;
     
     try {
-      // Create professional table design
+      // Create professional table design - bigger text for readability
       const wrapper = document.createElement("div");
-      wrapper.style.width = "1200px";
+      wrapper.style.width = "1600px";
       wrapper.style.margin = "0 auto";
       wrapper.style.backgroundColor = "#ffffff";
       wrapper.style.fontFamily = "Arial, sans-serif";
@@ -335,23 +335,23 @@ export default function HomePage() {
       const header = document.createElement("div");
       header.style.backgroundColor = "#2563eb";
       header.style.color = "#ffffff";
-      header.style.padding = "25px";
+      header.style.padding = "30px";
       header.style.textAlign = "center";
       header.innerHTML = `
-        <h1 style="margin: 0; font-size: 28px; font-weight: bold; margin-bottom: 8px;">جدول الامتحانات</h1>
-        <p style="margin: 0; font-size: 16px;">رقم الطالب: ${studentId}</p>
+        <h1 style="margin: 0; font-size: 36px; font-weight: bold; margin-bottom: 10px;">جدول الامتحانات</h1>
+        <p style="margin: 0; font-size: 20px;">رقم الطالب: ${studentId}</p>
       `;
       wrapper.appendChild(header);
       
       // Table Container
       const tableContainer = document.createElement("div");
-      tableContainer.style.padding = "20px";
+      tableContainer.style.padding = "25px";
       
       // Create table
       const table = document.createElement("table");
       table.style.width = "100%";
       table.style.borderCollapse = "collapse";
-      table.style.marginTop = "10px";
+      table.style.marginTop = "15px";
       
       // Table Header
       const thead = document.createElement("thead");
@@ -359,14 +359,14 @@ export default function HomePage() {
       headerRow.style.backgroundColor = "#f3f4f6";
       headerRow.style.borderBottom = "2px solid #d1d5db";
       
-      const headers = ["اسم المقرر", "رمز المقرر", "الفصل", "التاريخ", "الوقت", "المكان", "الفترة"];
+      const headers = ["اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "المكان", "الفترة"];
       headers.forEach(headerText => {
         const th = document.createElement("th");
         th.textContent = headerText;
-        th.style.padding = "12px 8px";
+        th.style.padding = "20px 16px";
         th.style.textAlign = "right";
         th.style.fontWeight = "bold";
-        th.style.fontSize = "12px";
+        th.style.fontSize = "18px";
         th.style.color = "#1f2937";
         th.style.borderRight = "1px solid #e5e7eb";
         headerRow.appendChild(th);
@@ -396,9 +396,9 @@ export default function HomePage() {
         cells.forEach((cellText, cellIndex) => {
           const td = document.createElement("td");
           td.textContent = cellText;
-          td.style.padding = "10px 8px";
+          td.style.padding = "18px 16px";
           td.style.textAlign = "right";
-          td.style.fontSize = "11px";
+          td.style.fontSize = "17px";
           td.style.color = "#111827";
           td.style.borderRight = "1px solid #e5e7eb";
           row.appendChild(td);
@@ -797,10 +797,10 @@ END:VCALENDAR`;
                 <button
                   onClick={handleExportJPG}
                   className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 flex items-center justify-center gap-2 transition-colors"
-                  title="تصدير كـ JPG"
+                  title="تصدير كـ صورة"
                 >
                   <ImageIcon className="w-4 h-4" />
-                  JPG
+                  صورة
                 </button>
                 <button
                   onClick={handleExportCalendar}
@@ -833,7 +833,7 @@ END:VCALENDAR`;
                     </h3>
                     <p className="text-sm sm:text-base font-medium text-gray-700">
                       <span className="text-xs sm:text-sm text-gray-500">رمز المقرر: </span>
-                      {schedule.courseCode} • <span className="text-base sm:text-lg font-semibold">الفصل {schedule.classNo}</span>
+                      {schedule.courseCode} • <span className="text-base sm:text-lg font-semibold">الشعبة {schedule.classNo}</span>
                     </p>
                   </div>
                   <span className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-800 text-xs sm:text-sm font-medium rounded-full whitespace-nowrap">

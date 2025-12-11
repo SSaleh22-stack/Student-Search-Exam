@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 export interface AdminInfo {
   id: string;
   username: string;
+  name?: string;
   isHeadAdmin: boolean;
   canManageSettings?: boolean;
 }
@@ -19,9 +20,10 @@ export async function verifyAdmin(username: string, password: string): Promise<A
       id: string;
       username: string;
       passwordHash: string;
+      name: string | null;
       isHeadAdmin: boolean;
     }>>`
-      SELECT * FROM "Admin" WHERE LOWER(username) = LOWER(${normalizedUsername}) LIMIT 1
+      SELECT id, username, "passwordHash", name, "isHeadAdmin" FROM "Admin" WHERE LOWER(username) = LOWER(${normalizedUsername}) LIMIT 1
     `;
     
     if (!admin || admin.length === 0) {
@@ -38,6 +40,7 @@ export async function verifyAdmin(username: string, password: string): Promise<A
     return {
       id: adminRecord.id,
       username: adminRecord.username,
+      name: adminRecord.name || undefined,
       isHeadAdmin: adminRecord.isHeadAdmin,
     };
   } catch (error) {
@@ -75,6 +78,7 @@ export async function getCurrentAdmin(): Promise<AdminInfo | null> {
       select: {
         id: true,
         username: true,
+        name: true,
         isHeadAdmin: true,
         canManageSettings: true,
       },

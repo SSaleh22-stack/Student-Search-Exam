@@ -20,7 +20,7 @@ export async function PUT(
     }
 
     const { id } = params;
-    const { username, password, isHeadAdmin, canUpload, canManageDatasets, canManageSettings } = await request.json();
+    const { username, password, name, lastname, isHeadAdmin, canUpload, canManageDatasets, canManageSettings } = await request.json();
 
     // Check if admin exists
     const existingAdmin = await prisma.admin.findUnique({
@@ -83,12 +83,22 @@ export async function PUT(
       updateData.canManageSettings = canManageSettings;
     }
 
+    if (name !== undefined) {
+      updateData.name = name || null;
+    }
+
+    if (lastname !== undefined) {
+      updateData.lastname = lastname || null;
+    }
+
     const admin = await prisma.admin.update({
       where: { id },
       data: updateData,
       select: {
         id: true,
         username: true,
+        name: true,
+        lastname: true,
         isHeadAdmin: true,
         canUpload: true,
         canManageDatasets: true,

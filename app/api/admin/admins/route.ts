@@ -20,6 +20,8 @@ export async function GET() {
       select: {
         id: true,
         username: true,
+        name: true,
+        lastname: true,
         isHeadAdmin: true,
         canUpload: true,
         canManageDatasets: true,
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { username, password, isHeadAdmin, canUpload, canManageDatasets, canManageSettings } = await request.json();
+    const { username, password, name, lastname, isHeadAdmin, canUpload, canManageDatasets, canManageSettings } = await request.json();
 
     if (!username || !password) {
       return NextResponse.json(
@@ -84,6 +86,8 @@ export async function POST(request: NextRequest) {
       data: {
         username: normalizedUsername,
         passwordHash,
+        name: name || null,
+        lastname: lastname || null,
         isHeadAdmin: isHeadAdmin === true,
         canUpload: canUpload !== false, // Default true
         canManageDatasets: canManageDatasets !== false, // Default true
@@ -92,6 +96,8 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         username: true,
+        name: true,
+        lastname: true,
         isHeadAdmin: true,
         canUpload: true,
         canManageDatasets: true,

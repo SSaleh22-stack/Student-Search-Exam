@@ -302,9 +302,9 @@ export default function LecturerPage() {
     const html2canvas = (await import("html2canvas")).default;
     
     try {
-      // Create professional table design
+      // Create professional table design - bigger text for readability
       const wrapper = document.createElement("div");
-      wrapper.style.width = "1400px";
+      wrapper.style.width = "1800px";
       wrapper.style.margin = "0 auto";
       wrapper.style.backgroundColor = "#ffffff";
       wrapper.style.fontFamily = "Arial, sans-serif";
@@ -313,23 +313,23 @@ export default function LecturerPage() {
       const header = document.createElement("div");
       header.style.backgroundColor = "#8b5cf6";
       header.style.color = "#ffffff";
-      header.style.padding = "25px";
+      header.style.padding = "30px";
       header.style.textAlign = "center";
       header.innerHTML = `
-        <h1 style="margin: 0; font-size: 28px; font-weight: bold; margin-bottom: 8px;">جدول امتحانات المحاضرين</h1>
-        <p style="margin: 0; font-size: 16px;">اسم المحاضر: ${lecturerName}</p>
+        <h1 style="margin: 0; font-size: 36px; font-weight: bold; margin-bottom: 10px;">جدول امتحانات المحاضرين</h1>
+        <p style="margin: 0; font-size: 20px;">اسم المحاضر: ${lecturerName}</p>
       `;
       wrapper.appendChild(header);
       
       // Table Container
       const tableContainer = document.createElement("div");
-      tableContainer.style.padding = "20px";
+      tableContainer.style.padding = "25px";
       
       // Create table
       const table = document.createElement("table");
       table.style.width = "100%";
       table.style.borderCollapse = "collapse";
-      table.style.marginTop = "10px";
+      table.style.marginTop = "15px";
       
       // Table Header
       const thead = document.createElement("thead");
@@ -341,10 +341,10 @@ export default function LecturerPage() {
       headers.forEach(headerText => {
         const th = document.createElement("th");
         th.textContent = headerText;
-        th.style.padding = "12px 8px";
+        th.style.padding = "20px 16px";
         th.style.textAlign = "right";
         th.style.fontWeight = "bold";
-        th.style.fontSize = "12px";
+        th.style.fontSize = "18px";
         th.style.color = "#1f2937";
         th.style.borderRight = "1px solid #e5e7eb";
         headerRow.appendChild(th);
@@ -375,9 +375,9 @@ export default function LecturerPage() {
         cells.forEach((cellText, cellIndex) => {
           const td = document.createElement("td");
           td.textContent = cellText;
-          td.style.padding = "12px 8px";
+          td.style.padding = "18px 16px";
           td.style.textAlign = "right";
-          td.style.fontSize = "11px";
+          td.style.fontSize = "17px";
           td.style.color = "#111827";
           td.style.borderRight = "1px solid #e5e7eb";
           row.appendChild(td);
@@ -735,10 +735,10 @@ END:VCALENDAR`;
                 <button
                   onClick={handleExportJPG}
                   className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm sm:text-base bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 flex items-center justify-center gap-2 transition-colors"
-                  title="تصدير كـ JPG"
+                  title="تصدير كـ صورة"
                 >
                   <ImageIcon className="w-4 h-4" />
-                  JPG
+                  صورة
                 </button>
                 <button
                   onClick={handleExportCalendar}

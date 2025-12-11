@@ -94,6 +94,8 @@ model Admin {
   id                String   @id @default(cuid())
   username          String   @unique
   passwordHash      String
+  name              String?
+  lastname          String?
   isHeadAdmin       Boolean  @default(false)
   canUpload         Boolean  @default(true)
   canManageDatasets Boolean  @default(true)

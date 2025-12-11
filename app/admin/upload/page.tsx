@@ -122,12 +122,14 @@ export default function AdminUploadPage() {
   const [selectedDatasets, setSelectedDatasets] = useState<Set<string>>(new Set());
   
   // Admin management (head admin only)
-  const [currentAdmin, setCurrentAdmin] = useState<{ username: string; isHeadAdmin: boolean; canManageSettings?: boolean } | null>(null);
+  const [currentAdmin, setCurrentAdmin] = useState<{ username: string; name?: string; isHeadAdmin: boolean; canManageSettings?: boolean } | null>(null);
   const [admins, setAdmins] = useState<any[]>([]);
   const [showAdminManagement, setShowAdminManagement] = useState(false);
   const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
   const [newAdminUsername, setNewAdminUsername] = useState("");
   const [newAdminPassword, setNewAdminPassword] = useState("");
+  const [newAdminName, setNewAdminName] = useState("");
+  const [newAdminLastname, setNewAdminLastname] = useState("");
   const [newAdminIsHead, setNewAdminIsHead] = useState(false);
   const [newAdminCanUpload, setNewAdminCanUpload] = useState(true);
   const [newAdminCanManageDatasets, setNewAdminCanManageDatasets] = useState(true);
@@ -135,6 +137,8 @@ export default function AdminUploadPage() {
   const [editingAdmin, setEditingAdmin] = useState<string | null>(null);
   const [editAdminUsername, setEditAdminUsername] = useState("");
   const [editAdminPassword, setEditAdminPassword] = useState("");
+  const [editAdminName, setEditAdminName] = useState("");
+  const [editAdminLastname, setEditAdminLastname] = useState("");
   const [editAdminIsHead, setEditAdminIsHead] = useState(false);
   const [editAdminCanUpload, setEditAdminCanUpload] = useState(true);
   const [editAdminCanManageDatasets, setEditAdminCanManageDatasets] = useState(true);
@@ -275,6 +279,8 @@ export default function AdminUploadPage() {
         body: JSON.stringify({
           username: newAdminUsername.trim(),
           password: newAdminPassword,
+          name: newAdminName.trim() || undefined,
+          lastname: newAdminLastname.trim() || undefined,
           isHeadAdmin: newAdminIsHead,
           canUpload: newAdminCanUpload,
           canManageDatasets: newAdminCanManageDatasets,
@@ -291,6 +297,8 @@ export default function AdminUploadPage() {
       setSuccess(`تم إنشاء المسؤول "${newAdminUsername}" بنجاح`);
       setNewAdminUsername("");
       setNewAdminPassword("");
+      setNewAdminName("");
+      setNewAdminLastname("");
       setNewAdminIsHead(false);
       setNewAdminCanUpload(true);
       setNewAdminCanManageDatasets(true);
@@ -312,6 +320,8 @@ export default function AdminUploadPage() {
     try {
       const updateData: any = {
         username: editAdminUsername.trim(),
+        name: editAdminName.trim() || undefined,
+        lastname: editAdminLastname.trim() || undefined,
         isHeadAdmin: editAdminIsHead,
         canUpload: editAdminCanUpload,
         canManageDatasets: editAdminCanManageDatasets,
@@ -338,6 +348,8 @@ export default function AdminUploadPage() {
       setEditingAdmin(null);
       setEditAdminUsername("");
       setEditAdminPassword("");
+      setEditAdminName("");
+      setEditAdminLastname("");
       setEditAdminIsHead(false);
       setEditAdminCanUpload(true);
       setEditAdminCanManageDatasets(true);
@@ -377,6 +389,8 @@ export default function AdminUploadPage() {
     setEditingAdmin(admin.id);
     setEditAdminUsername(admin.username);
     setEditAdminPassword("");
+    setEditAdminName(admin.name || "");
+    setEditAdminLastname(admin.lastname || "");
     setEditAdminIsHead(admin.isHeadAdmin ?? false);
     setEditAdminCanUpload(admin.canUpload ?? true);
     setEditAdminCanManageDatasets(admin.canManageDatasets ?? true);
@@ -1368,7 +1382,12 @@ No header mapping needed.`);
               height={48}
               className="h-12 w-auto"
             />
-            <h1 className="text-3xl font-bold text-gray-900">لوحة التحكم</h1>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">لوحة التحكم</h1>
+              {currentAdmin?.name && (
+                <p className="text-lg text-gray-600 mt-1">مرحبا، {currentAdmin.name}</p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             {currentAdmin?.isHeadAdmin && (
@@ -2412,6 +2431,30 @@ No header mapping needed.`);
                   <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
+                        الاسم الأول
+                      </label>
+                      <input
+                        type="text"
+                        value={editAdminName}
+                        onChange={(e) => setEditAdminName(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="أدخل الاسم الأول"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        اسم العائلة
+                      </label>
+                      <input
+                        type="text"
+                        value={editAdminLastname}
+                        onChange={(e) => setEditAdminLastname(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="أدخل اسم العائلة"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         اسم المستخدم
                       </label>
                       <input
@@ -2547,6 +2590,30 @@ No header mapping needed.`);
               </button>
             </div>
             <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  الاسم الأول
+                </label>
+                <input
+                  type="text"
+                  value={newAdminName}
+                  onChange={(e) => setNewAdminName(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="أدخل الاسم الأول"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  اسم العائلة
+                </label>
+                <input
+                  type="text"
+                  value={newAdminLastname}
+                  onChange={(e) => setNewAdminLastname(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="أدخل اسم العائلة"
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   اسم المستخدم

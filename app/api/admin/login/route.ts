@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
       success: true,
       admin: {
         username: admin.username,
+        name: admin.name,
         isHeadAdmin: admin.isHeadAdmin,
       }
     });

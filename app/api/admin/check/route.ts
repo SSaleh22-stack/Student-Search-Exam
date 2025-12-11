@@ -13,6 +13,7 @@ export async function GET() {
       authenticated: true,
       admin: {
         username: admin.username,
+        name: admin.name,
         isHeadAdmin: admin.isHeadAdmin,
         canManageSettings: admin.canManageSettings ?? false,
       }
