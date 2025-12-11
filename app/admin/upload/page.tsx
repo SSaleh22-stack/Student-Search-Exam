@@ -324,6 +324,7 @@ export default function AdminUploadPage() {
 
   const updateSearchSettings = async (type: "student" | "lecturer", isActive: boolean) => {
     setLoadingSettings(true);
+    setError(null);
     try {
       const res = await fetch("/api/admin/settings", {
         method: "POST",
@@ -334,17 +335,20 @@ export default function AdminUploadPage() {
         }),
       });
 
+      const data = await safeJsonParse(res);
+
       if (!res.ok) {
-        throw new Error("فشل تحديث الإعدادات");
+        throw new Error(data.error || "فشل تحديث الإعدادات");
       }
 
-      const data = await safeJsonParse(res);
       setStudentSearchActive(data.studentSearchActive);
       setLecturerSearchActive(data.lecturerSearchActive);
       setSuccess(`تم ${isActive ? "تفعيل" : "إلغاء تفعيل"} صفحة البحث ${type === "student" ? "للطلاب" : "للمحاضرين"} بنجاح`);
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "فشل تحديث الإعدادات");
+      const errorMessage = err instanceof Error ? err.message : "فشل تحديث الإعدادات";
+      setError(errorMessage);
+      console.error("Error updating search settings:", err);
     } finally {
       setLoadingSettings(false);
     }

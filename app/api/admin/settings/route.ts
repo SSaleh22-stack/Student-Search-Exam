@@ -50,9 +50,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if admin has permission to manage settings
+    // Head admins can always manage settings, or admins with canManageSettings permission
     if (!admin.isHeadAdmin && !admin.canManageSettings) {
       return NextResponse.json(
-        { error: "Unauthorized. You don't have permission to manage settings." },
+        { error: "غير مصرح. ليس لديك صلاحية لإدارة الإعدادات. يرجى الاتصال برئيس المسؤولين." },
         { status: 403 }
       );
     }
