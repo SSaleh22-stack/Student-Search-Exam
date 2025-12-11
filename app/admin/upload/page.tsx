@@ -175,16 +175,16 @@ export default function AdminUploadPage() {
         setAdmins(data.admins || []);
       } else {
         const errorData = await safeJsonParse(res);
-        setError(errorData.error || "Failed to load admins");
+        setError(errorData.error || "فشل تحميل المسؤولين");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load admins");
+      setError(err instanceof Error ? err.message : "فشل تحميل المسؤولين");
     }
   };
 
   const handleCreateAdmin = async () => {
     if (!newAdminUsername.trim() || !newAdminPassword.trim()) {
-      setError("Username and password are required");
+      setError("اسم المستخدم وكلمة المرور مطلوبان");
       return;
     }
 
@@ -202,10 +202,10 @@ export default function AdminUploadPage() {
       const data = await safeJsonParse(res);
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to create admin");
+        throw new Error(data.error || "فشل إنشاء المسؤول");
       }
 
-      setSuccess(`Admin "${newAdminUsername}" created successfully`);
+      setSuccess(`تم إنشاء المسؤول "${newAdminUsername}" بنجاح`);
       setNewAdminUsername("");
       setNewAdminPassword("");
       setNewAdminIsHead(false);
@@ -213,13 +213,13 @@ export default function AdminUploadPage() {
       loadAdmins();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create admin");
+      setError(err instanceof Error ? err.message : "فشل إنشاء المسؤول");
     }
   };
 
   const handleEditAdmin = async (adminId: string) => {
     if (!editAdminUsername.trim()) {
-      setError("Username is required");
+      setError("اسم المستخدم مطلوب");
       return;
     }
 
@@ -242,10 +242,10 @@ export default function AdminUploadPage() {
       const data = await safeJsonParse(res);
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to update admin");
+        throw new Error(data.error || "فشل تحديث المسؤول");
       }
 
-      setSuccess("Admin updated successfully");
+      setSuccess("تم تحديث المسؤول بنجاح");
       setEditingAdmin(null);
       setEditAdminUsername("");
       setEditAdminPassword("");
@@ -253,12 +253,12 @@ export default function AdminUploadPage() {
       loadAdmins();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update admin");
+      setError(err instanceof Error ? err.message : "فشل تحديث المسؤول");
     }
   };
 
   const handleDeleteAdmin = async (adminId: string, username: string) => {
-    if (!confirm(`Are you sure you want to delete admin "${username}"?`)) {
+    if (!confirm(`هل أنت متأكد من حذف المسؤول "${username}"؟`)) {
       return;
     }
 
@@ -270,14 +270,14 @@ export default function AdminUploadPage() {
       const data = await safeJsonParse(res);
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to delete admin");
+        throw new Error(data.error || "فشل حذف المسؤول");
       }
 
-      setSuccess(`Admin "${username}" deleted successfully`);
+      setSuccess(`تم حذف المسؤول "${username}" بنجاح`);
       loadAdmins();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete admin");
+      setError(err instanceof Error ? err.message : "فشل حذف المسؤول");
     }
   };
 
@@ -371,7 +371,7 @@ export default function AdminUploadPage() {
 
   const handleBulkActivate = async () => {
     if (selectedDatasets.size === 0) {
-      setError("Please select at least one dataset");
+      setError("يرجى اختيار مجموعة بيانات واحدة على الأقل");
       return;
     }
 
@@ -406,7 +406,7 @@ export default function AdminUploadPage() {
 
   const handleBulkDeactivate = async () => {
     if (selectedDatasets.size === 0) {
-      setError("Please select at least one dataset");
+      setError("يرجى اختيار مجموعة بيانات واحدة على الأقل");
       return;
     }
 
@@ -425,15 +425,15 @@ export default function AdminUploadPage() {
 
       const failed = results.filter(r => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok));
       if (failed.length > 0) {
-        throw new Error(`${failed.length} dataset(s) failed to deactivate`);
+        throw new Error(`فشل إلغاء تفعيل ${failed.length} مجموعة بيانات`);
       }
 
-      setSuccess(`${selectedDatasets.size} dataset(s) deactivated successfully`);
+      setSuccess(`تم إلغاء تفعيل ${selectedDatasets.size} مجموعة بيانات بنجاح`);
       setSelectedDatasets(new Set());
       loadDatasets();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to deactivate datasets");
+      setError(err instanceof Error ? err.message : "فشل إلغاء تفعيل مجموعات البيانات");
     } finally {
       setLoading(false);
     }
@@ -441,7 +441,7 @@ export default function AdminUploadPage() {
 
   const handleBulkDelete = async () => {
     if (selectedDatasets.size === 0) {
-      setError("Please select at least one dataset");
+      setError("يرجى اختيار مجموعة بيانات واحدة على الأقل");
       return;
     }
 
@@ -450,7 +450,7 @@ export default function AdminUploadPage() {
       .map(d => d.name)
       .join(", ");
 
-    if (!confirm(`Are you sure you want to delete ${selectedDatasets.size} dataset(s)?\n\n${selectedNames}\n\nThis action cannot be undone and will delete all associated exams and enrollments.`)) {
+    if (!confirm(`هل أنت متأكد من حذف ${selectedDatasets.size} مجموعة بيانات؟\n\n${selectedNames}\n\nلا يمكن التراجع عن هذا الإجراء وسيتم حذف جميع الامتحانات والتسجيلات المرتبطة.`)) {
       return;
     }
 
@@ -469,10 +469,10 @@ export default function AdminUploadPage() {
 
       const failed = results.filter(r => r.status === "rejected" || (r.status === "fulfilled" && !r.value.ok));
       if (failed.length > 0) {
-        throw new Error(`${failed.length} dataset(s) failed to delete`);
+        throw new Error(`فشل حذف ${failed.length} مجموعة بيانات`);
       }
 
-      setSuccess(`${selectedDatasets.size} dataset(s) deleted successfully`);
+      setSuccess(`تم حذف ${selectedDatasets.size} مجموعة بيانات بنجاح`);
       // Remove from expanded state if any were expanded
       setExpandedDataset(null);
       setDatasetDetails({});
@@ -480,14 +480,14 @@ export default function AdminUploadPage() {
       loadDatasets();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete datasets");
+      setError(err instanceof Error ? err.message : "فشل حذف مجموعات البيانات");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (datasetId: string, datasetName: string) => {
-    if (!confirm(`Are you sure you want to delete the dataset "${datasetName}"? This action cannot be undone and will delete all associated exams and enrollments.`)) {
+    if (!confirm(`هل أنت متأكد من حذف مجموعة البيانات "${datasetName}"؟ لا يمكن التراجع عن هذا الإجراء وسيتم حذف جميع الامتحانات والتسجيلات المرتبطة.`)) {
       return;
     }
 
@@ -502,10 +502,10 @@ export default function AdminUploadPage() {
 
       if (!res.ok) {
         const data = await safeJsonParse(res);
-        throw new Error(data.error || "Failed to delete dataset");
+        throw new Error(data.error || "فشل حذف مجموعة البيانات");
       }
 
-      setSuccess("Dataset deleted successfully");
+      setSuccess("تم حذف مجموعة البيانات بنجاح");
       // Remove from expanded state if it was expanded
       if (expandedDataset === datasetId) {
         setExpandedDataset(null);
@@ -518,7 +518,7 @@ export default function AdminUploadPage() {
       loadDatasets();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete dataset");
+      setError(err instanceof Error ? err.message : "فشل حذف مجموعة البيانات");
     } finally {
       setLoading(false);
     }
@@ -539,10 +539,10 @@ export default function AdminUploadPage() {
         setDatasetDetails((prev) => ({ ...prev, [datasetId]: data }));
         setExpandedDataset(datasetId);
       } else {
-        throw new Error("Failed to load dataset details");
+        throw new Error("فشل تحميل تفاصيل مجموعة البيانات");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load dataset details");
+      setError(err instanceof Error ? err.message : "فشل تحميل تفاصيل مجموعة البيانات");
     } finally {
       setLoadingDetails(null);
     }
@@ -600,7 +600,7 @@ No header mapping needed.`);
 
       if (!res.ok) {
         const errorData = await safeJsonParse(res);
-        throw new Error(typeof errorData === 'string' ? errorData : errorData.error || "Failed to read headers");
+        throw new Error(typeof errorData === 'string' ? errorData : errorData.error || "فشل قراءة العناوين");
       }
 
       const data = await safeJsonParse(res);
@@ -653,7 +653,7 @@ No header mapping needed.`);
       setShowMapping(true);
     } catch (err) {
       console.error("Error reading headers:", err);
-      setError("Failed to read Excel headers");
+      setError("فشل قراءة عناوين Excel");
     } finally {
       setReadingHeaders(false);
     }
@@ -733,7 +733,7 @@ No header mapping needed.`);
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!uploadType) {
-      setError("Please select upload type (Student or Lecturer)");
+      setError("يرجى اختيار نوع الرفع (طالب أو محاضر)");
       return;
     }
     
@@ -743,7 +743,7 @@ No header mapping needed.`);
     
     if (uploadType === "student") {
       if (examFiles.length === 0 || enrollFiles.length === 0 || !datasetName.trim()) {
-        setError("Please provide at least one exam file, one enrollment file, and a dataset name");
+        setError("يرجى توفير ملف امتحان واحد على الأقل وملف تسجيل واحد واسم مجموعة البيانات");
         return;
       }
       
@@ -751,25 +751,25 @@ No header mapping needed.`);
       let totalSize = 0;
       for (const file of examFiles) {
         if (file.size > MAX_FILE_SIZE) {
-          setError(`File "${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum file size is 10MB. Please split the file into smaller parts.`);
+          setError(`الملف "${file.name}" كبير جداً (${(file.size / 1024 / 1024).toFixed(2)} ميجابايت). الحد الأقصى لحجم الملف هو 10 ميجابايت. يرجى تقسيم الملف إلى أجزاء أصغر.`);
           return;
         }
         totalSize += file.size;
       }
       for (const file of enrollFiles) {
         if (file.size > MAX_FILE_SIZE) {
-          setError(`File "${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum file size is 10MB. Please split the file into smaller parts.`);
+          setError(`الملف "${file.name}" كبير جداً (${(file.size / 1024 / 1024).toFixed(2)} ميجابايت). الحد الأقصى لحجم الملف هو 10 ميجابايت. يرجى تقسيم الملف إلى أجزاء أصغر.`);
           return;
         }
         totalSize += file.size;
       }
       if (totalSize > MAX_TOTAL_SIZE) {
-        setError(`Total file size (${(totalSize / 1024 / 1024).toFixed(2)}MB) exceeds the limit of 20MB. Please upload fewer or smaller files.`);
+        setError(`إجمالي حجم الملفات (${(totalSize / 1024 / 1024).toFixed(2)} ميجابايت) يتجاوز الحد الأقصى البالغ 20 ميجابايت. يرجى رفع ملفات أقل أو أصغر.`);
         return;
       }
     } else if (uploadType === "lecturer") {
       if (lecturerFiles.length === 0 || !datasetName.trim()) {
-        setError("Please provide at least one lecturer file and a dataset name");
+        setError("يرجى توفير ملف محاضر واحد على الأقل واسم مجموعة البيانات");
         return;
       }
       
@@ -777,13 +777,13 @@ No header mapping needed.`);
       let totalSize = 0;
       for (const file of lecturerFiles) {
         if (file.size > MAX_FILE_SIZE) {
-          setError(`File "${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum file size is 10MB. Please split the file into smaller parts.`);
+          setError(`الملف "${file.name}" كبير جداً (${(file.size / 1024 / 1024).toFixed(2)} ميجابايت). الحد الأقصى لحجم الملف هو 10 ميجابايت. يرجى تقسيم الملف إلى أجزاء أصغر.`);
           return;
         }
         totalSize += file.size;
       }
       if (totalSize > MAX_TOTAL_SIZE) {
-        setError(`Total file size (${(totalSize / 1024 / 1024).toFixed(2)}MB) exceeds the limit of 20MB. Please upload fewer or smaller files.`);
+        setError(`إجمالي حجم الملفات (${(totalSize / 1024 / 1024).toFixed(2)} ميجابايت) يتجاوز الحد الأقصى البالغ 20 ميجابايت. يرجى رفع ملفات أقل أو أصغر.`);
         return;
       }
     }
@@ -819,7 +819,7 @@ No header mapping needed.`);
       const missingEnroll = enrollRequired.filter(f => !enrollMapping[f]);
       
       if (missingExam.length > 0 || missingEnroll.length > 0) {
-        setError(`Please map all required fields. Missing: ${[...missingExam, ...missingEnroll].join(", ")}`);
+        setError(`يرجى تعيين جميع الحقول المطلوبة. الحقول المفقودة: ${[...missingExam, ...missingEnroll].join(", ")}`);
         return;
       }
     } else if (uploadType === "lecturer") {
@@ -827,7 +827,7 @@ No header mapping needed.`);
       const missingLecturer = lecturerRequired.filter(f => !lecturerMapping[f]);
       
       if (missingLecturer.length > 0) {
-        setError(`Please map all required fields. Missing: ${missingLecturer.join(", ")}`);
+        setError(`يرجى تعيين جميع الحقول المطلوبة. الحقول المفقودة: ${missingLecturer.join(", ")}`);
         return;
       }
     }
@@ -913,7 +913,7 @@ No header mapping needed.`);
         // Handle timeout errors (504 Gateway Timeout)
         if (res.status === 504 || res.status === 408) {
           const timeoutError = typeof data === 'string' ? data : 'Upload timeout';
-          setError(`Upload timeout: The file is too large or processing took too long. Please try:\n1. Splitting large files into smaller ones\n2. Reducing the number of rows\n3. Checking your internet connection\n\nError: ${timeoutError}`);
+          setError(`انتهت مهلة الرفع: الملف كبير جداً أو استغرق المعالجة وقتاً طويلاً. يرجى المحاولة:\n1. تقسيم الملفات الكبيرة إلى ملفات أصغر\n2. تقليل عدد الصفوف\n3. التحقق من اتصال الإنترنت\n\nخطأ: ${timeoutError}`);
           setLoading(false);
           return;
         }
@@ -922,7 +922,7 @@ No header mapping needed.`);
         if (typeof data === 'string') {
           // Check if it's a timeout-related error message
           if (data.includes('timeout') || data.includes('TIMEOUT') || data.includes('FUNCTION_INVOCATION_TIMEOUT')) {
-            setError(`Upload timeout: The file processing took too long. Please try:\n1. Splitting large files into smaller ones\n2. Reducing the number of rows\n3. Contact support if the problem persists\n\nError: ${data.substring(0, 200)}`);
+            setError(`انتهت مهلة الرفع: استغرق معالجة الملف وقتاً طويلاً. يرجى المحاولة:\n1. تقسيم الملفات الكبيرة إلى ملفات أصغر\n2. تقليل عدد الصفوف\n3. الاتصال بالدعم إذا استمرت المشكلة\n\nخطأ: ${data.substring(0, 200)}`);
           } else {
             setError(data);
           }
@@ -936,7 +936,7 @@ No header mapping needed.`);
           const enrollErrCount = data.totalEnrollErrors || data.enrollErrors?.length || 0;
           const lecturerErrCount = data.totalLecturerErrors || data.lecturerErrors?.length || 0;
           
-          let errorMsg = `Validation failed: ${examErrCount} exam errors, ${enrollErrCount} enrollment errors`;
+          let errorMsg = `فشل التحقق: ${examErrCount} أخطاء في الامتحانات، ${enrollErrCount} أخطاء في التسجيلات`;
           if (lecturerErrCount > 0) {
             errorMsg += `, ${lecturerErrCount} lecturer errors`;
           }
@@ -988,17 +988,17 @@ No header mapping needed.`);
       const updated = data.summary?.updated || 0;
       const failed = data.summary?.failed || 0;
       const uniqueStudents = data.summary?.details?.enrollments?.uniqueStudents || 0;
-      const fileType = data.fileType === "block-structured" ? " (Block-structured files detected)" : 
-                       data.fileType === "section-structured" ? " (Section-structured files detected)" : "";
+      const fileType = data.fileType === "block-structured" ? " (تم اكتشاف ملفات منظمة على شكل كتل)" : 
+                       data.fileType === "section-structured" ? " (تم اكتشاف ملفات منظمة على شكل أقسام)" : "";
       const filesProcessed = data.filesProcessed || {};
       
-      let successMsg = `Upload successful! Processed ${filesProcessed.examFiles || 0} exam file(s) and ${filesProcessed.enrollFiles || 0} enrollment file(s)`;
+      let successMsg = `تم الرفع بنجاح! تمت معالجة ${filesProcessed.examFiles || 0} ملف امتحان و ${filesProcessed.enrollFiles || 0} ملف تسجيل`;
       if (filesProcessed.lecturerFiles > 0) {
-        successMsg += ` and ${filesProcessed.lecturerFiles} lecturer file(s)`;
+        successMsg += ` و ${filesProcessed.lecturerFiles} ملف محاضر`;
       }
-      successMsg += `. Inserted: ${inserted}, Updated: ${updated}, Failed: ${failed}`;
+      successMsg += `. تم الإدراج: ${inserted}، تم التحديث: ${updated}، فشل: ${failed}`;
       if (uniqueStudents > 0) {
-        successMsg += ` | Students: ${uniqueStudents}`;
+        successMsg += ` | الطلاب: ${uniqueStudents}`;
       }
       if (fileType) {
         successMsg += fileType;
@@ -1022,7 +1022,7 @@ No header mapping needed.`);
       loadDatasets();
       setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      setError(err instanceof Error ? err.message : "فشل الرفع");
       setUploadProgress(0);
       setShowUploadModal(false);
     } finally {
@@ -1350,10 +1350,10 @@ No header mapping needed.`);
                             }
                           }}
                           className="text-xs text-blue-600 hover:text-blue-800 underline disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Reset to auto-detected values"
+                          title="إعادة تعيين إلى القيم المكتشفة تلقائياً"
                           disabled={uploading || readingHeaders}
                         >
-                          Reset Auto-Detect
+                          إعادة الكشف التلقائي
                         </button>
                       </div>
                       <div className="space-y-2">
@@ -1400,7 +1400,7 @@ No header mapping needed.`);
                         {["rows", "seats"].map((field) => (
                           <div key={field} className="flex items-center gap-2">
                             <label className="text-xs text-gray-600 w-28 capitalize">
-                              {field} (optional):
+                              {field === "rows" ? "الصفوف" : "المقاعد"} (اختياري):
                             </label>
                             <select
                               value={examMapping[field] || ""}
@@ -1425,7 +1425,7 @@ No header mapping needed.`);
                   {lecturerHeaders.length > 0 && (
                     <div className="bg-purple-50 p-3 rounded-md border border-purple-200">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-sm font-medium text-gray-900">Lecturer Schedule File</h4>
+                        <h4 className="text-sm font-medium text-gray-900">ملف جدول المحاضرين</h4>
                         <button
                           type="button"
                           onClick={() => {
@@ -1434,10 +1434,10 @@ No header mapping needed.`);
                             }
                           }}
                           className="text-xs text-purple-600 hover:text-purple-800 underline disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Reset to auto-detected values"
+                          title="إعادة تعيين إلى القيم المكتشفة تلقائياً"
                           disabled={uploading || readingHeaders}
                         >
-                          Reset Auto-Detect
+                          إعادة الكشف التلقائي
                         </button>
                       </div>
                       <div className="space-y-2">
@@ -1465,7 +1465,7 @@ No header mapping needed.`);
                         {["role", "grade", "exam_code", "number_of_students", "column", "day", "invigilator"].map((field) => (
                           <div key={field} className="flex items-center gap-2">
                             <label className="text-xs text-gray-600 w-28 capitalize">
-                              {field.replace(/_/g, " ")} (optional):
+                              {field.replace(/_/g, " ")} (اختياري):
                             </label>
                             <select
                               value={lecturerMapping[field] || ""}
@@ -1500,10 +1500,10 @@ No header mapping needed.`);
                             }
                           }}
                           className="text-xs text-green-600 hover:text-green-800 underline disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Reset to auto-detected values"
+                          title="إعادة تعيين إلى القيم المكتشفة تلقائياً"
                           disabled={uploading || readingHeaders}
                         >
-                          Reset Auto-Detect
+                          إعادة الكشف التلقائي
                         </button>
                       </div>
                       <div className="space-y-2">
@@ -1568,7 +1568,7 @@ No header mapping needed.`);
                     <button
                       onClick={handleSelectAll}
                       className="px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center gap-1"
-                      title="Select all datasets"
+                      title="تحديد جميع مجموعات البيانات"
                     >
                       {selectedDatasets.size === datasets.length ? (
                         <CheckSquare className="w-4 h-4" />
@@ -1655,7 +1655,7 @@ No header mapping needed.`);
                                 )}
                               </div>
                               <p className="text-sm text-gray-500 mt-1">
-                                تم الإنشاء: {new Date(dataset.createdAt).toLocaleDateString()}
+                                تم الإنشاء: {new Date(dataset.createdAt).toLocaleString('ar-SA', { dateStyle: 'short', timeStyle: 'short' })}
                               </p>
                             </div>
                           </div>
@@ -1664,7 +1664,7 @@ No header mapping needed.`);
                               onClick={() => loadDatasetDetails(dataset.id)}
                               disabled={isLoadingDetails}
                               className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200 disabled:opacity-50 flex items-center gap-1"
-                              title="View dataset details"
+                              title="عرض تفاصيل مجموعة البيانات"
                             >
                               {isLoadingDetails ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -1689,7 +1689,7 @@ No header mapping needed.`);
                               onClick={() => handleDelete(dataset.id, dataset.name)}
                               disabled={loading}
                               className="px-3 py-1 bg-red-800 text-white text-sm rounded-md hover:bg-red-900 disabled:opacity-50 flex items-center gap-1"
-                              title="Delete dataset"
+                              title="حذف مجموعة البيانات"
                             >
                               <Trash2 className="w-4 h-4" />
                               حذف
@@ -1707,7 +1707,7 @@ No header mapping needed.`);
                               <>
                                 <div className="bg-white p-3 rounded-md border border-gray-200 text-center">
                                   <div className="text-2xl font-bold text-blue-600">{details.summary.totalLecturerExams}</div>
-                                  <div className="text-sm text-gray-600 mt-1">Total Lecturer Exams</div>
+                                  <div className="text-sm text-gray-600 mt-1">إجمالي امتحانات المحاضرين</div>
                                 </div>
                                 <div className="bg-white p-3 rounded-md border border-gray-200 text-center">
                                   <div className="text-2xl font-bold text-purple-600">{details.summary.uniqueLecturers}</div>
@@ -1722,11 +1722,11 @@ No header mapping needed.`);
                               <>
                                 <div className="bg-white p-3 rounded-md border border-gray-200 text-center">
                                   <div className="text-2xl font-bold text-blue-600">{details.summary.totalExams}</div>
-                                  <div className="text-sm text-gray-600 mt-1">Total Exams</div>
+                                  <div className="text-sm text-gray-600 mt-1">إجمالي الامتحانات</div>
                                 </div>
                                 <div className="bg-white p-3 rounded-md border border-gray-200 text-center">
                                   <div className="text-2xl font-bold text-green-600">{details.summary.totalEnrollments}</div>
-                                  <div className="text-sm text-gray-600 mt-1">Total Enrollments</div>
+                                  <div className="text-sm text-gray-600 mt-1">إجمالي التسجيلات</div>
                                 </div>
                                 <div className="bg-white p-3 rounded-md border border-gray-200 text-center">
                                   <div className="text-2xl font-bold text-purple-600">{details.summary.uniqueCourses}</div>
@@ -1734,7 +1734,7 @@ No header mapping needed.`);
                                 </div>
                                 <div className="bg-white p-3 rounded-md border border-gray-200 text-center">
                                   <div className="text-2xl font-bold text-orange-600">{details.summary.uniqueStudents}</div>
-                                  <div className="text-sm text-gray-600 mt-1">Unique Students</div>
+                                  <div className="text-sm text-gray-600 mt-1">الطلاب المميزون</div>
                                 </div>
                               </>
                             )}
@@ -1746,7 +1746,7 @@ No header mapping needed.`);
                               <div className="bg-white p-4 rounded-md border border-gray-200">
                                 <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                                   <FileSpreadsheet className="w-4 h-4 text-blue-600" />
-                                  All Lecturer Exams ({details.lecturerExams.length})
+                                  جميع امتحانات المحاضرين ({details.lecturerExams.length})
                                 </h4>
                                 <div className="max-h-96 overflow-y-auto">
                                   <div className="overflow-x-auto">
@@ -1760,7 +1760,7 @@ No header mapping needed.`);
                                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Course Code</th>
                                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Course Name</th>
                                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Section</th>
-                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Students</th>
+                                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">الطلاب</th>
                                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Room</th>
                                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Column</th>
                                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-700">Day</th>
@@ -1801,7 +1801,7 @@ No header mapping needed.`);
                               <div className="bg-white p-4 rounded-md border border-gray-200">
                                 <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                                   <FileSpreadsheet className="w-4 h-4 text-blue-600" />
-                                  All Exams ({details.exams.length})
+                                  جميع الامتحانات ({details.exams.length})
                                 </h4>
                                 <div className="max-h-96 overflow-y-auto">
                                   <div className="overflow-x-auto">
@@ -1846,7 +1846,7 @@ No header mapping needed.`);
                           <div className="bg-white p-4 rounded-md border border-gray-200">
                             <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                               <FileSpreadsheet className="w-4 h-4 text-green-600" />
-                              All Enrollments ({details.enrollments.length})
+                              جميع التسجيلات ({details.enrollments.length})
                             </h4>
                             <div className="max-h-96 overflow-y-auto">
                               <div className="overflow-x-auto">
@@ -1895,7 +1895,7 @@ No header mapping needed.`);
               <button
                 onClick={() => setShowSettingsModal(false)}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                title="Close"
+                title="إغلاق"
               >
                 <X className="w-5 h-5 text-gray-600" />
               </button>
@@ -1911,7 +1911,7 @@ No header mapping needed.`);
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`text-sm font-medium ${studentSearchActive ? "text-green-600" : "text-gray-500"}`}>
-                    {studentSearchActive ? "Active" : "Inactive"}
+                    {studentSearchActive ? "نشط" : "غير نشط"}
                   </span>
                   <button
                     onClick={() => updateSearchSettings("student", !studentSearchActive)}
@@ -1922,7 +1922,7 @@ No header mapping needed.`);
                         : "bg-green-600 text-white hover:bg-green-700"
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    {studentSearchActive ? "Deactivate" : "Activate"}
+                    {studentSearchActive ? "إلغاء التفعيل" : "تفعيل"}
                   </button>
                 </div>
               </div>
@@ -1937,7 +1937,7 @@ No header mapping needed.`);
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`text-sm font-medium ${lecturerSearchActive ? "text-green-600" : "text-gray-500"}`}>
-                    {lecturerSearchActive ? "Active" : "Inactive"}
+                    {lecturerSearchActive ? "نشط" : "غير نشط"}
                   </span>
                   <button
                     onClick={() => updateSearchSettings("lecturer", !lecturerSearchActive)}
@@ -1948,7 +1948,7 @@ No header mapping needed.`);
                         : "bg-green-600 text-white hover:bg-green-700"
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    {lecturerSearchActive ? "Deactivate" : "Activate"}
+                    {lecturerSearchActive ? "إلغاء التفعيل" : "تفعيل"}
                   </button>
                 </div>
               </div>
@@ -1958,7 +1958,7 @@ No header mapping needed.`);
                 onClick={() => setShowSettingsModal(false)}
                 className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
               >
-                Close
+                إغلاق
               </button>
             </div>
           </div>
@@ -2007,7 +2007,7 @@ No header mapping needed.`);
                         )}
                       </div>
                       <p className="text-sm text-gray-500">
-                        تم الإنشاء: {new Date(admin.createdAt).toLocaleDateString()}
+                        تم الإنشاء: {new Date(admin.createdAt).toLocaleString('ar-SA', { dateStyle: 'short', timeStyle: 'short' })}
                       </p>
                     </div>
                   </div>
