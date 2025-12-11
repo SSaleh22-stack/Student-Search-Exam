@@ -97,91 +97,143 @@ export default function LecturerPage() {
 
   const handleExportPDF = async () => {
     const { jsPDF } = await import("jspdf");
-    const html2canvas = (await import("html2canvas")).default;
-    
-    const container = document.querySelector(".space-y-4");
-    if (!container) return;
     
     try {
-      const canvas = await html2canvas(container as HTMLElement, {
-        scale: 3,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-        windowWidth: container.scrollWidth,
-        windowHeight: container.scrollHeight,
-      });
-      
-      const imgData = canvas.toDataURL("image/png", 1.0);
       const pdf = new jsPDF("p", "mm", "a4");
       const pageWidth = 210;
       const pageHeight = 297;
-      const margin = 10;
+      const margin = 15;
       const contentWidth = pageWidth - (margin * 2);
-      const imgWidth = contentWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let yPos = margin;
       
-      // Add header
-      pdf.setFillColor(139, 92, 246); // Purple color
-      pdf.rect(0, 0, pageWidth, 20, "F");
+      // Helper function to add new page if needed
+      const checkNewPage = (requiredHeight: number) => {
+        if (yPos + requiredHeight > pageHeight - 20) {
+          pdf.addPage();
+          yPos = margin;
+          return true;
+        }
+        return false;
+      };
+      
+      // Professional Header
+      pdf.setFillColor(139, 92, 246); // Purple-600
+      pdf.rect(0, 0, pageWidth, 25, "F");
       pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(18);
+      pdf.setFontSize(20);
       pdf.setFont("helvetica", "bold");
       pdf.text("جدول امتحانات المحاضرين", pageWidth / 2, 12, { align: "center" });
-      pdf.setFontSize(12);
-      pdf.text(`اسم المحاضر: ${lecturerName}`, pageWidth / 2, 18, { align: "center" });
+      pdf.setFontSize(11);
+      pdf.text(`اسم المحاضر: ${lecturerName}`, pageWidth / 2, 20, { align: "center" });
       
       // Reset text color
       pdf.setTextColor(0, 0, 0);
+      yPos = 35;
       
-      let heightLeft = imgHeight;
-      let position = 25; // Start after header
-      const maxContentHeight = pageHeight - 30; // Leave space for footer
+      // Table Header
+      checkNewPage(15);
+      pdf.setFillColor(243, 244, 246); // Gray-100
+      pdf.rect(margin, yPos, contentWidth, 12, "F");
+      pdf.setDrawColor(209, 213, 219); // Gray-300
+      pdf.setLineWidth(0.5);
+      pdf.rect(margin, yPos, contentWidth, 12);
       
-      // Add first page content
-      if (imgHeight <= maxContentHeight) {
-        pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight, undefined, "FAST");
-      } else {
-        // Split into multiple pages
-        let yOffset = 0;
-        let pageNumber = 1;
+      pdf.setFontSize(10);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(31, 41, 55); // Gray-800
+      
+      const colWidths = [45, 35, 25, 25, 25, 30];
+      const headers = ["اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "القاعة"];
+      let xPos = margin + 2;
+      
+      headers.forEach((header, index) => {
+        pdf.text(header, xPos, yPos + 8);
+        xPos += colWidths[index];
+      });
+      
+      yPos += 15;
+      
+      // Table Rows
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.setTextColor(17, 24, 39); // Gray-900
+      
+      exams.forEach((exam, index) => {
+        checkNewPage(25);
         
-        while (heightLeft > 0) {
-          if (pageNumber > 1) {
-            pdf.addPage();
-            position = 0;
-          }
-          
-          const pageImgHeight = Math.min(heightLeft, maxContentHeight);
-          const sourceY = (yOffset / imgHeight) * canvas.height;
-          const sourceHeight = (pageImgHeight / imgHeight) * canvas.height;
-          
-          // Create a temporary canvas for this page slice
-          const pageCanvas = document.createElement("canvas");
-          pageCanvas.width = canvas.width;
-          pageCanvas.height = sourceHeight;
-          const ctx = pageCanvas.getContext("2d");
-          if (ctx) {
-            ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
-            const pageImgData = pageCanvas.toDataURL("image/png", 1.0);
-            pdf.addImage(pageImgData, "PNG", margin, position, imgWidth, pageImgHeight, undefined, "FAST");
-          }
-          
-          yOffset += pageImgHeight;
-          heightLeft -= pageImgHeight;
-          pageNumber++;
+        // Alternate row colors
+        if (index % 2 === 0) {
+          pdf.setFillColor(249, 250, 251); // Gray-50
+          pdf.rect(margin, yPos, contentWidth, 23, "F");
         }
-      }
+        
+        // Draw row border
+        pdf.setDrawColor(229, 231, 235); // Gray-200
+        pdf.rect(margin, yPos, contentWidth, 23);
+        
+        // Course Name
+        pdf.text(exam.courseName.substring(0, 25), margin + 2, yPos + 6);
+        
+        // Course Code
+        pdf.text(exam.courseCode, margin + 47, yPos + 6);
+        
+        // Section
+        pdf.text(exam.section, margin + 82, yPos + 6);
+        
+        // Date
+        pdf.text(formatDate(exam.examDate), margin + 107, yPos + 6);
+        
+        // Time
+        pdf.text(exam.periodStart, margin + 132, yPos + 6);
+        
+        // Room
+        pdf.text(exam.room.substring(0, 15), margin + 157, yPos + 6);
+        
+        // Second line - Additional info
+        pdf.setFontSize(8);
+        pdf.setTextColor(107, 114, 128); // Gray-500
+        let secondLineX = margin + 2;
+        
+        if (exam.examPeriod) {
+          pdf.text(`الفترة: ${exam.examPeriod}`, secondLineX, yPos + 12);
+          secondLineX += 50;
+        }
+        
+        if (exam.role) {
+          pdf.text(`الدور: ${exam.role}`, secondLineX, yPos + 12);
+          secondLineX += 40;
+        }
+        
+        if (exam.numberOfStudents) {
+          pdf.text(`الطلاب: ${exam.numberOfStudents}`, secondLineX, yPos + 12);
+        }
+        
+        pdf.setFontSize(9);
+        pdf.setTextColor(17, 24, 39);
+        yPos += 25;
+      });
       
-      // Add footer to all pages
+      // Summary
+      checkNewPage(15);
+      yPos += 5;
+      pdf.setDrawColor(209, 213, 219);
+      pdf.setLineWidth(0.5);
+      pdf.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 8;
+      
+      pdf.setFontSize(10);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`إجمالي عدد الامتحانات: ${exams.length}`, margin, yPos);
+      
+      // Footer on all pages
       const totalPages = pdf.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         pdf.setPage(i);
         pdf.setFontSize(8);
-        pdf.setTextColor(128, 128, 128);
-        pdf.text(`صفحة ${i} من ${totalPages}`, pageWidth / 2, pageHeight - 5, { align: "center" });
+        pdf.setTextColor(156, 163, 175); // Gray-400
+        pdf.text(`صفحة ${i} من ${totalPages}`, pageWidth / 2, pageHeight - 8, { align: "center" });
         const currentDate = new Date().toLocaleDateString("ar-SA");
-        pdf.text(`تاريخ الطباعة: ${currentDate}`, margin, pageHeight - 5);
+        pdf.text(`تاريخ الطباعة: ${currentDate}`, margin, pageHeight - 8);
       }
       
       pdf.save(`جدول_المحاضر_${lecturerName.replace(/\s+/g, "_")}.pdf`);
@@ -193,54 +245,126 @@ export default function LecturerPage() {
   const handleExportJPG = async () => {
     const html2canvas = (await import("html2canvas")).default;
     
-    const container = document.querySelector(".space-y-4");
-    if (!container) return;
-    
     try {
-      // Create a wrapper div for better export
+      // Create professional table design
       const wrapper = document.createElement("div");
-      wrapper.style.padding = "20px";
-      wrapper.style.backgroundColor = "#ffffff";
-      wrapper.style.width = "800px";
+      wrapper.style.width = "1400px";
       wrapper.style.margin = "0 auto";
+      wrapper.style.backgroundColor = "#ffffff";
+      wrapper.style.fontFamily = "Arial, sans-serif";
       
-      // Add header
+      // Header
       const header = document.createElement("div");
       header.style.backgroundColor = "#8b5cf6";
       header.style.color = "#ffffff";
-      header.style.padding = "15px";
-      header.style.borderRadius = "8px 8px 0 0";
-      header.style.marginBottom = "20px";
+      header.style.padding = "25px";
       header.style.textAlign = "center";
       header.innerHTML = `
-        <h2 style="margin: 0; font-size: 24px; font-weight: bold;">جدول امتحانات المحاضرين</h2>
-        <p style="margin: 5px 0 0 0; font-size: 16px;">اسم المحاضر: ${lecturerName}</p>
+        <h1 style="margin: 0; font-size: 28px; font-weight: bold; margin-bottom: 8px;">جدول امتحانات المحاضرين</h1>
+        <p style="margin: 0; font-size: 16px;">اسم المحاضر: ${lecturerName}</p>
       `;
       wrapper.appendChild(header);
       
-      // Clone the container content
-      const clonedContainer = container.cloneNode(true) as HTMLElement;
-      clonedContainer.style.margin = "0";
-      wrapper.appendChild(clonedContainer);
+      // Table Container
+      const tableContainer = document.createElement("div");
+      tableContainer.style.padding = "20px";
       
-      // Add footer
+      // Create table
+      const table = document.createElement("table");
+      table.style.width = "100%";
+      table.style.borderCollapse = "collapse";
+      table.style.marginTop = "10px";
+      
+      // Table Header
+      const thead = document.createElement("thead");
+      const headerRow = document.createElement("tr");
+      headerRow.style.backgroundColor = "#f3f4f6";
+      headerRow.style.borderBottom = "2px solid #d1d5db";
+      
+      const headers = ["اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "القاعة", "الفترة"];
+      headers.forEach(headerText => {
+        const th = document.createElement("th");
+        th.textContent = headerText;
+        th.style.padding = "12px 8px";
+        th.style.textAlign = "right";
+        th.style.fontWeight = "bold";
+        th.style.fontSize = "12px";
+        th.style.color = "#1f2937";
+        th.style.borderRight = "1px solid #e5e7eb";
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+      
+      // Table Body
+      const tbody = document.createElement("tbody");
+      exams.forEach((exam, index) => {
+        const row = document.createElement("tr");
+        if (index % 2 === 0) {
+          row.style.backgroundColor = "#f9fafb";
+        }
+        row.style.borderBottom = "1px solid #e5e7eb";
+        
+        const cells = [
+          exam.courseName,
+          exam.courseCode,
+          exam.section,
+          formatDate(exam.examDate),
+          exam.periodStart,
+          exam.room,
+          exam.examPeriod || ""
+        ];
+        
+        cells.forEach((cellText, cellIndex) => {
+          const td = document.createElement("td");
+          td.textContent = cellText;
+          td.style.padding = "12px 8px";
+          td.style.textAlign = "right";
+          td.style.fontSize = "11px";
+          td.style.color = "#111827";
+          td.style.borderRight = "1px solid #e5e7eb";
+          row.appendChild(td);
+        });
+        
+        tbody.appendChild(row);
+      });
+      table.appendChild(tbody);
+      tableContainer.appendChild(table);
+      
+      // Summary
+      const summary = document.createElement("div");
+      summary.style.marginTop = "20px";
+      summary.style.padding = "15px";
+      summary.style.backgroundColor = "#f3f4f6";
+      summary.style.borderRadius = "6px";
+      summary.style.textAlign = "right";
+      summary.innerHTML = `
+        <p style="margin: 0; font-size: 14px; font-weight: bold; color: #1f2937;">
+          إجمالي عدد الامتحانات: ${exams.length}
+        </p>
+      `;
+      tableContainer.appendChild(summary);
+      
+      wrapper.appendChild(tableContainer);
+      
+      // Footer
       const footer = document.createElement("div");
       footer.style.textAlign = "center";
       footer.style.padding = "15px";
       footer.style.color = "#6b7280";
-      footer.style.fontSize = "12px";
+      footer.style.fontSize = "11px";
       footer.style.borderTop = "1px solid #e5e7eb";
-      footer.style.marginTop = "20px";
       footer.textContent = `تاريخ الطباعة: ${new Date().toLocaleDateString("ar-SA")}`;
       wrapper.appendChild(footer);
       
       // Temporarily add to DOM
       wrapper.style.position = "absolute";
       wrapper.style.left = "-9999px";
+      wrapper.style.top = "0";
       document.body.appendChild(wrapper);
       
       const canvas = await html2canvas(wrapper, {
-        scale: 3,
+        scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
@@ -253,7 +377,7 @@ export default function LecturerPage() {
       
       const link = document.createElement("a");
       link.download = `جدول_المحاضر_${lecturerName.replace(/\s+/g, "_")}.jpg`;
-      link.href = canvas.toDataURL("image/jpeg", 0.98);
+      link.href = canvas.toDataURL("image/jpeg", 0.95);
       link.click();
     } catch (err) {
       console.error("Failed to export JPG:", err);
@@ -293,8 +417,9 @@ export default function LecturerPage() {
       return date;
     };
     
-    // Helper function to format date for iCal (UTC format)
+    // Helper function to format date for iCal (convert local time to UTC)
     const formatICalDate = (date: Date): string => {
+      // Get UTC components directly from the date
       const year = date.getUTCFullYear();
       const month = String(date.getUTCMonth() + 1).padStart(2, "0");
       const day = String(date.getUTCDate()).padStart(2, "0");
@@ -305,29 +430,49 @@ export default function LecturerPage() {
     };
     
     const icsContent = exams
-      .map((exam) => {
+      .map((exam, index) => {
         try {
           // Parse and convert date
           const examDate = parseDate(exam.examDate);
+          if (!examDate || isNaN(examDate.getTime())) {
+            console.error("Invalid date:", exam.examDate);
+            return "";
+          }
           
-          // Parse time (format: HH:MM)
-          const [startHours, startMinutes] = exam.periodStart.split(":").map(Number);
+          // Parse time (format: HH:MM or HH:MM:SS)
+          let startHours = 0;
+          let startMinutes = 0;
+          if (exam.periodStart) {
+            const timeParts = exam.periodStart.trim().split(":");
+            startHours = parseInt(timeParts[0] || "0", 10);
+            startMinutes = parseInt(timeParts[1] || "0", 10);
+            if (isNaN(startHours) || isNaN(startMinutes)) {
+              startHours = 0;
+              startMinutes = 0;
+            }
+          }
+          
+          // Create start date in local time
           const startDate = new Date(examDate);
-          startDate.setUTCHours(startHours || 0, startMinutes || 0, 0, 0);
+          startDate.setHours(startHours, startMinutes, 0, 0);
           
           // Default 2 hours duration
           const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
           
-          const summary = escapeText(`${exam.courseName} (${exam.courseCode}) - ${exam.section}`);
-          const descriptionParts = [exam.examPeriod, exam.room];
+          const summary = escapeText(`${exam.courseName} (${exam.courseCode}) - ${exam.section || ""}`.trim());
+          const descriptionParts = [];
+          if (exam.examPeriod) descriptionParts.push(exam.examPeriod);
+          if (exam.room) descriptionParts.push(exam.room);
           if (exam.invigilator) {
             descriptionParts.push(`مراقب: ${exam.invigilator}`);
           }
           const description = escapeText(descriptionParts.join(" - "));
-          const location = escapeText(exam.room);
+          const location = escapeText(exam.room || "");
+          
+          const uid = `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}@exam-schedule`;
           
           return `BEGIN:VEVENT
-UID:${Date.now()}-${Math.random().toString(36).substr(2, 9)}@exam-schedule
+UID:${uid}
 DTSTAMP:${formatICalDate(new Date())}
 DTSTART:${formatICalDate(startDate)}
 DTEND:${formatICalDate(endDate)}
