@@ -664,10 +664,11 @@ END:VCALENDAR`;
           </div>
           <div className="mb-4 sm:mb-6 flex justify-center">
             <div className="relative inline-flex items-center justify-center">
-              <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 rounded-lg blur-sm opacity-75 animate-pulse"></div>
-              <div className="relative bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-lg shadow-lg border-2 border-orange-600 transform hover:scale-105 transition-transform duration-200">
-                <span className="text-base sm:text-lg md:text-xl font-bold tracking-wide drop-shadow-md">
-                  ⚠️ موقع تجريبي
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-200 via-amber-300 to-amber-200 rounded-full blur-md opacity-60"></div>
+              <div className="relative bg-gradient-to-br from-amber-50 via-amber-100 to-amber-50 text-amber-800 px-5 sm:px-7 py-2 sm:py-2.5 rounded-full shadow-md border border-amber-300/50 backdrop-blur-sm">
+                <span className="text-sm sm:text-base md:text-lg font-semibold tracking-wide flex items-center gap-2">
+                  <span className="text-amber-600">⚠️</span>
+                  <span>موقع تجريبي</span>
                 </span>
               </div>
             </div>
