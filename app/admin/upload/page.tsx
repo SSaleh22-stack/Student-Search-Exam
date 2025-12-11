@@ -104,6 +104,7 @@ export default function AdminUploadPage() {
   const [lecturerMapping, setLecturerMapping] = useState<HeaderMapping>({});
   const [showMapping, setShowMapping] = useState(false);
   const [examAutoDetectSuccess, setExamAutoDetectSuccess] = useState(false);
+  const [lecturerAutoDetectSuccess, setLecturerAutoDetectSuccess] = useState(false);
   
   // Dataset details states
   const [expandedDataset, setExpandedDataset] = useState<string | null>(null);
@@ -864,8 +865,60 @@ No header mapping needed.`);
     const files = Array.from(e.target.files || []);
     setLecturerFiles(files);
     if (files.length > 0) {
-      // Read headers from the first file
-      await readHeaders(files[0], "lecturer");
+      // Check auto-detection for the first file
+      const firstFile = files[0];
+      try {
+        setReadingHeaders(true);
+        setReadingProgress(0);
+        
+        // Simulate progress for auto-detection check
+        let progressInterval: NodeJS.Timeout | null = null;
+        progressInterval = setInterval(() => {
+          setReadingProgress(prev => {
+            if (prev >= 40) return prev;
+            return prev + Math.random() * 10;
+          });
+        }, 150);
+        
+        const checkFormData = new FormData();
+        checkFormData.append("file", firstFile);
+        const checkRes = await fetch("/api/admin/check-lecturer-auto-detect", {
+          method: "POST",
+          body: checkFormData,
+        });
+        
+        if (progressInterval) {
+          clearInterval(progressInterval);
+        }
+        
+        if (checkRes.ok) {
+          const checkData = await safeJsonParse(checkRes);
+          if (checkData.canAutoDetect) {
+            // Auto-detection will work, set mapping and don't show UI
+            setLecturerMapping(checkData.mapping);
+            setLecturerAutoDetectSuccess(true);
+            setShowMapping(false);
+            setReadingProgress(100);
+            setTimeout(() => {
+              setReadingHeaders(false);
+              setReadingProgress(0);
+            }, 500);
+            return;
+          } else {
+            // Auto-detection failed, show mapping UI
+            setLecturerAutoDetectSuccess(false);
+            await readHeaders(firstFile, "lecturer");
+          }
+        } else {
+          // If check fails, fall back to showing mapping UI
+          setLecturerAutoDetectSuccess(false);
+          await readHeaders(firstFile, "lecturer");
+        }
+      } catch (err) {
+        // If check fails, fall back to showing mapping UI
+        setLecturerAutoDetectSuccess(false);
+        await readHeaders(firstFile, "lecturer");
+      }
     }
   };
 
@@ -1011,16 +1064,28 @@ No header mapping needed.`);
       const res = await new Promise<Response>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         
-        // Track upload progress
+        // Track upload progress (0-60% for file upload)
         xhr.upload.addEventListener('progress', (e) => {
           if (e.lengthComputable) {
-            const percentComplete = Math.round((e.loaded / e.total) * 100);
-            setUploadProgress(percentComplete);
+            // Map upload progress to 0-60% range
+            const uploadPercent = (e.loaded / e.total) * 60;
+            setUploadProgress(Math.round(uploadPercent));
           }
         });
         
-        // Handle completion
+        // Handle completion - simulate processing (60-90%)
         xhr.addEventListener('load', () => {
+          // Simulate server processing progress
+          let processingProgress = 60;
+          const processingInterval = setInterval(() => {
+            processingProgress += Math.random() * 5 + 2;
+            if (processingProgress >= 90) {
+              processingProgress = 90;
+              clearInterval(processingInterval);
+            }
+            setUploadProgress(Math.round(processingProgress));
+          }, 200);
+          
           // Create a Response-like object
           const response = new Response(xhr.responseText, {
             status: xhr.status,
@@ -1046,7 +1111,22 @@ No header mapping needed.`);
         xhr.send(formData);
       });
 
+      // Simulate finalizing (90-100%)
+      setUploadProgress(90);
+      const finalizingInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 99) {
+            clearInterval(finalizingInterval);
+            return 99;
+          }
+          return prev + 1;
+        });
+      }, 100);
+
       const data = await safeJsonParse(res);
+      
+      clearInterval(finalizingInterval);
+      setUploadProgress(100);
 
       if (!res.ok) {
         // Handle timeout errors (504 Gateway Timeout)
@@ -1236,7 +1316,7 @@ No header mapping needed.`);
             <div className="w-full space-y-2">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-700 font-medium">التقدم</span>
-                <span className="text-blue-600 font-semibold">{uploading ? uploadProgress : readingProgress}%</span>
+                <span className="text-blue-600 font-semibold">{Math.round(uploading ? uploadProgress : readingProgress)}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3">
                 <div
@@ -1244,7 +1324,7 @@ No header mapping needed.`);
                   style={{ width: `${uploading ? uploadProgress : readingProgress}%` }}
                 >
                   {(uploading ? uploadProgress : readingProgress) > 10 && (
-                    <span className="text-xs text-white font-medium">{uploading ? uploadProgress : readingProgress}%</span>
+                    <span className="text-xs text-white font-medium">{Math.round(uploading ? uploadProgress : readingProgress)}%</span>
                   )}
                 </div>
               </div>
@@ -1485,7 +1565,7 @@ No header mapping needed.`);
                                 readHeaders(examFiles[0], "exam");
                               }
                             }}
-                            className="mt-2 text-xs text-green-700 hover:text-green-900 underline"
+                            className="mt-3 px-4 py-2 text-sm font-medium text-green-700 bg-green-100 hover:bg-green-200 border border-green-300 rounded-md transition-colors"
                           >
                             اضغط لتعديل العناوين يدوياً
                           </button>
@@ -1518,6 +1598,30 @@ No header mapping needed.`);
                               <li key={idx}>{file.name}</li>
                             ))}
                           </ul>
+                        </div>
+                      )}
+
+                      {/* Auto-detection success message for lecturer file */}
+                      {lecturerAutoDetectSuccess && lecturerFiles.length > 0 && (
+                        <div className="mt-3 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4" />
+                            <span className="text-sm font-medium">
+                              ملف جدول المحاضرين: تم اكتشاف جميع العناوين تلقائياً بنجاح! لا حاجة للتعيين اليدوي.
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLecturerAutoDetectSuccess(false);
+                              if (lecturerFiles.length > 0) {
+                                readHeaders(lecturerFiles[0], "lecturer");
+                              }
+                            }}
+                            className="mt-3 px-4 py-2 text-sm font-medium text-green-700 bg-green-100 hover:bg-green-200 border border-green-300 rounded-md transition-colors"
+                          >
+                            اضغط لتعديل العناوين يدوياً
+                          </button>
                         </div>
                       )}
                     </div>
@@ -1748,12 +1852,12 @@ No header mapping needed.`);
                 {uploading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Uploading...
+                    جاري الرفع...
                   </>
                 ) : (
                   <>
                     <Upload className="w-4 h-4" />
-                    Upload Dataset
+                    رفع مجموعة البيانات
                   </>
                 )}
               </button>
@@ -2392,17 +2496,17 @@ No header mapping needed.`);
               <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
-              Uploading Files
+              جاري رفع الملفات
             </h3>
             <p className="text-sm text-gray-600 text-center mb-6">
-              Please wait while we process your files...
+              يرجى الانتظار أثناء معالجة الملفات...
             </p>
             
             {/* Progress Bar */}
             <div className="w-full space-y-2">
               <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-700 font-medium">Progress</span>
-                <span className="text-blue-600 font-semibold">{uploadProgress}%</span>
+                <span className="text-gray-700 font-medium">التقدم</span>
+                <span className="text-blue-600 font-semibold">{Math.round(uploadProgress)}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3">
                 <div
@@ -2410,17 +2514,17 @@ No header mapping needed.`);
                   style={{ width: `${uploadProgress}%` }}
                 >
                   {uploadProgress > 10 && (
-                    <span className="text-xs text-white font-medium">{uploadProgress}%</span>
+                    <span className="text-xs text-white font-medium">{Math.round(uploadProgress)}%</span>
                   )}
                 </div>
               </div>
             </div>
             
             <div className="mt-4 text-xs text-gray-500 text-center">
-              {uploadProgress < 50 && "Uploading files..."}
-              {uploadProgress >= 50 && uploadProgress < 90 && "Processing data..."}
-              {uploadProgress >= 90 && uploadProgress < 100 && "Finalizing..."}
-              {uploadProgress === 100 && "Complete!"}
+              {uploadProgress < 50 && "جاري رفع الملفات..."}
+              {uploadProgress >= 50 && uploadProgress < 90 && "جاري معالجة البيانات..."}
+              {uploadProgress >= 90 && uploadProgress < 100 && "جاري الانتهاء..."}
+              {uploadProgress === 100 && "اكتمل!"}
             </div>
           </div>
         </div>
