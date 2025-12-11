@@ -115,130 +115,186 @@ export default function HomePage() {
 
   const handleExportPDF = async () => {
     const { jsPDF } = await import("jspdf");
+    const html2canvas = (await import("html2canvas")).default;
     
     try {
+      // Create professional table design
+      const wrapper = document.createElement("div");
+      wrapper.style.width = "1200px";
+      wrapper.style.margin = "0 auto";
+      wrapper.style.backgroundColor = "#ffffff";
+      wrapper.style.fontFamily = "Arial, sans-serif";
+      
+      // Header
+      const header = document.createElement("div");
+      header.style.backgroundColor = "#2563eb";
+      header.style.color = "#ffffff";
+      header.style.padding = "25px";
+      header.style.textAlign = "center";
+      header.innerHTML = `
+        <h1 style="margin: 0; font-size: 28px; font-weight: bold; margin-bottom: 8px;">جدول الامتحانات</h1>
+        <p style="margin: 0; font-size: 16px;">رقم الطالب: ${studentId}</p>
+      `;
+      wrapper.appendChild(header);
+      
+      // Table Container
+      const tableContainer = document.createElement("div");
+      tableContainer.style.padding = "20px";
+      
+      // Create table
+      const table = document.createElement("table");
+      table.style.width = "100%";
+      table.style.borderCollapse = "collapse";
+      table.style.marginTop = "10px";
+      
+      // Table Header
+      const thead = document.createElement("thead");
+      const headerRow = document.createElement("tr");
+      headerRow.style.backgroundColor = "#f3f4f6";
+      headerRow.style.borderBottom = "2px solid #d1d5db";
+      
+      const headers = ["اسم المقرر", "رمز المقرر", "الفصل", "التاريخ", "الوقت", "المكان", "الفترة"];
+      headers.forEach(headerText => {
+        const th = document.createElement("th");
+        th.textContent = headerText;
+        th.style.padding = "12px 8px";
+        th.style.textAlign = "right";
+        th.style.fontWeight = "bold";
+        th.style.fontSize = "12px";
+        th.style.color = "#1f2937";
+        th.style.borderRight = "1px solid #e5e7eb";
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+      
+      // Table Body
+      const tbody = document.createElement("tbody");
+      schedules.forEach((schedule, index) => {
+        const row = document.createElement("tr");
+        if (index % 2 === 0) {
+          row.style.backgroundColor = "#f9fafb";
+        }
+        row.style.borderBottom = "1px solid #e5e7eb";
+        
+        const cells = [
+          schedule.courseName,
+          schedule.courseCode,
+          schedule.classNo,
+          formatDate(schedule.examDate),
+          `${schedule.startTime}${schedule.endTime ? ` - ${schedule.endTime}` : ""}`,
+          schedule.place,
+          schedule.period
+        ];
+        
+        cells.forEach((cellText, cellIndex) => {
+          const td = document.createElement("td");
+          td.textContent = cellText;
+          td.style.padding = "10px 8px";
+          td.style.textAlign = "right";
+          td.style.fontSize = "11px";
+          td.style.color = "#111827";
+          td.style.borderRight = "1px solid #e5e7eb";
+          row.appendChild(td);
+        });
+        
+        tbody.appendChild(row);
+      });
+      table.appendChild(tbody);
+      tableContainer.appendChild(table);
+      
+      // Summary
+      const summary = document.createElement("div");
+      summary.style.marginTop = "20px";
+      summary.style.padding = "15px";
+      summary.style.backgroundColor = "#f3f4f6";
+      summary.style.borderRadius = "6px";
+      summary.style.textAlign = "right";
+      summary.innerHTML = `
+        <p style="margin: 0; font-size: 14px; font-weight: bold; color: #1f2937;">
+          إجمالي عدد الامتحانات: ${schedules.length}
+        </p>
+      `;
+      tableContainer.appendChild(summary);
+      
+      wrapper.appendChild(tableContainer);
+      
+      // Footer
+      const footer = document.createElement("div");
+      footer.style.textAlign = "center";
+      footer.style.padding = "15px";
+      footer.style.color = "#6b7280";
+      footer.style.fontSize = "11px";
+      footer.style.borderTop = "1px solid #e5e7eb";
+      footer.textContent = `تاريخ الطباعة: ${new Date().toLocaleDateString("ar-SA")}`;
+      wrapper.appendChild(footer);
+      
+      // Temporarily add to DOM
+      wrapper.style.position = "absolute";
+      wrapper.style.left = "-9999px";
+      wrapper.style.top = "0";
+      document.body.appendChild(wrapper);
+      
+      // Convert to canvas
+      const canvas = await html2canvas(wrapper, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        width: wrapper.scrollWidth,
+        height: wrapper.scrollHeight,
+      });
+      
+      // Remove wrapper from DOM
+      document.body.removeChild(wrapper);
+      
+      // Create PDF from canvas
+      const imgData = canvas.toDataURL("image/png", 1.0);
       const pdf = new jsPDF("p", "mm", "a4");
       const pageWidth = 210;
       const pageHeight = 297;
-      const margin = 15;
+      const margin = 10;
       const contentWidth = pageWidth - (margin * 2);
-      let yPos = margin;
+      const imgWidth = contentWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
-      // Helper function to add new page if needed
-      const checkNewPage = (requiredHeight: number) => {
-        if (yPos + requiredHeight > pageHeight - 20) {
-          pdf.addPage();
-          yPos = margin;
-          return true;
+      let heightLeft = imgHeight;
+      let position = margin;
+      const maxContentHeight = pageHeight - (margin * 2);
+      
+      // Add first page
+      if (imgHeight <= maxContentHeight) {
+        pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight, undefined, "FAST");
+      } else {
+        // Split into multiple pages
+        let yOffset = 0;
+        let pageNumber = 1;
+        
+        while (heightLeft > 0) {
+          if (pageNumber > 1) {
+            pdf.addPage();
+            position = margin;
+          }
+          
+          const pageImgHeight = Math.min(heightLeft, maxContentHeight);
+          const sourceY = (yOffset / imgHeight) * canvas.height;
+          const sourceHeight = (pageImgHeight / imgHeight) * canvas.height;
+          
+          // Create a temporary canvas for this page slice
+          const pageCanvas = document.createElement("canvas");
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = sourceHeight;
+          const ctx = pageCanvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
+            const pageImgData = pageCanvas.toDataURL("image/png", 1.0);
+            pdf.addImage(pageImgData, "PNG", margin, position, imgWidth, pageImgHeight, undefined, "FAST");
+          }
+          
+          yOffset += pageImgHeight;
+          heightLeft -= pageImgHeight;
+          pageNumber++;
         }
-        return false;
-      };
-      
-      // Professional Header
-      pdf.setFillColor(37, 99, 235); // Blue-600
-      pdf.rect(0, 0, pageWidth, 25, "F");
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(20);
-      pdf.setFont("helvetica", "bold");
-      pdf.text("جدول الامتحانات", pageWidth / 2, 12, { align: "center" });
-      pdf.setFontSize(11);
-      pdf.text(`رقم الطالب: ${studentId}`, pageWidth / 2, 20, { align: "center" });
-      
-      // Reset text color
-      pdf.setTextColor(0, 0, 0);
-      yPos = 35;
-      
-      // Table Header
-      checkNewPage(15);
-      pdf.setFillColor(243, 244, 246); // Gray-100
-      pdf.rect(margin, yPos, contentWidth, 12, "F");
-      pdf.setDrawColor(209, 213, 219); // Gray-300
-      pdf.setLineWidth(0.5);
-      pdf.rect(margin, yPos, contentWidth, 12);
-      
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "bold");
-      pdf.setTextColor(31, 41, 55); // Gray-800
-      
-      const colWidths = [50, 60, 30, 30, 30];
-      const headers = ["اسم المقرر", "رمز المقرر / الفصل", "التاريخ", "الوقت", "المكان"];
-      let xPos = margin + 2;
-      
-      headers.forEach((header, index) => {
-        pdf.text(header, xPos, yPos + 8);
-        xPos += colWidths[index];
-      });
-      
-      yPos += 15;
-      
-      // Table Rows
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-      pdf.setTextColor(17, 24, 39); // Gray-900
-      
-      schedules.forEach((schedule, index) => {
-        checkNewPage(20);
-        
-        // Alternate row colors
-        if (index % 2 === 0) {
-          pdf.setFillColor(249, 250, 251); // Gray-50
-          pdf.rect(margin, yPos, contentWidth, 18, "F");
-        }
-        
-        // Draw row border
-        pdf.setDrawColor(229, 231, 235); // Gray-200
-        pdf.rect(margin, yPos, contentWidth, 18);
-        
-        // Course Name
-        pdf.text(schedule.courseName.substring(0, 30), margin + 2, yPos + 6);
-        
-        // Course Code / Class
-        pdf.text(`${schedule.courseCode} / ${schedule.classNo}`, margin + 52, yPos + 6);
-        
-        // Date
-        pdf.text(formatDate(schedule.examDate), margin + 112, yPos + 6);
-        
-        // Time
-        pdf.text(`${schedule.startTime}${schedule.endTime ? ` - ${schedule.endTime}` : ""}`, margin + 142, yPos + 6);
-        
-        // Place
-        pdf.text(schedule.place.substring(0, 20), margin + 172, yPos + 6);
-        
-        // Period (second line)
-        pdf.setFontSize(8);
-        pdf.setTextColor(107, 114, 128); // Gray-500
-        pdf.text(`الفترة: ${schedule.period}`, margin + 2, yPos + 12);
-        
-        if (schedule.rows) {
-          pdf.text(`المقاعد: ${schedule.rows}`, margin + 52, yPos + 12);
-        }
-        
-        pdf.setFontSize(9);
-        pdf.setTextColor(17, 24, 39);
-        yPos += 20;
-      });
-      
-      // Summary
-      checkNewPage(15);
-      yPos += 5;
-      pdf.setDrawColor(209, 213, 219);
-      pdf.setLineWidth(0.5);
-      pdf.line(margin, yPos, pageWidth - margin, yPos);
-      yPos += 8;
-      
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(`إجمالي عدد الامتحانات: ${schedules.length}`, margin, yPos);
-      
-      // Footer on all pages
-      const totalPages = pdf.getNumberOfPages();
-      for (let i = 1; i <= totalPages; i++) {
-        pdf.setPage(i);
-        pdf.setFontSize(8);
-        pdf.setTextColor(156, 163, 175); // Gray-400
-        pdf.text(`صفحة ${i} من ${totalPages}`, pageWidth / 2, pageHeight - 8, { align: "center" });
-        const currentDate = new Date().toLocaleDateString("ar-SA");
-        pdf.text(`تاريخ الطباعة: ${currentDate}`, margin, pageHeight - 8);
       }
       
       pdf.save(`جدول_الامتحانات_${studentId}.pdf`);
@@ -400,26 +456,59 @@ export default function HomePage() {
     };
     
     // Helper function to convert date string to Gregorian Date
-    const parseDate = (dateStr: string): Date => {
-      // Check if it's Hijri date (year between 1200-1600)
-      const hijriMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (hijriMatch) {
-        const year = parseInt(hijriMatch[1], 10);
-        if (year >= 1200 && year < 1600) {
-          // It's a Hijri date, convert to Gregorian
-          const gregorianDateStr = parseHijriDate(dateStr);
-          if (gregorianDateStr) {
-            return new Date(gregorianDateStr);
+    const parseDate = (dateStr: string): Date | null => {
+      if (!dateStr || !dateStr.trim()) {
+        console.error("Empty date string");
+        return null;
+      }
+      
+      try {
+        // Check if it's Hijri date (year between 1200-1600)
+        const hijriMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (hijriMatch) {
+          const year = parseInt(hijriMatch[1], 10);
+          const month = parseInt(hijriMatch[2], 10);
+          const day = parseInt(hijriMatch[3], 10);
+          
+          // Validate month and day
+          if (month < 1 || month > 12 || day < 1 || day > 30) {
+            console.error("Invalid Hijri date:", dateStr);
+            return null;
+          }
+          
+          if (year >= 1200 && year < 1600) {
+            // It's a Hijri date, convert to Gregorian
+            const gregorianDateStr = parseHijriDate(dateStr);
+            if (gregorianDateStr) {
+              const gregorianDate = new Date(gregorianDateStr + "T00:00:00");
+              if (!isNaN(gregorianDate.getTime())) {
+                return gregorianDate;
+              } else {
+                console.error("Failed to parse converted Gregorian date:", gregorianDateStr);
+                return null;
+              }
+            } else {
+              console.error("Failed to convert Hijri date to Gregorian:", dateStr);
+              return null;
+            }
           }
         }
+        
+        // Try to parse as Gregorian date
+        let date = new Date(dateStr);
+        if (isNaN(date.getTime())) {
+          // If parsing fails, try adding timezone
+          date = new Date(dateStr + "T00:00:00");
+          if (isNaN(date.getTime())) {
+            console.error("Failed to parse date:", dateStr);
+            return null;
+          }
+        }
+        return date;
+      } catch (err) {
+        console.error("Error parsing date:", dateStr, err);
+        return null;
       }
-      // Try to parse as Gregorian date
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) {
-        // If parsing fails, try adding timezone
-        return new Date(dateStr + "T00:00:00");
-      }
-      return date;
     };
     
     // Helper function to format date for iCal (convert local time to UTC)
@@ -440,7 +529,7 @@ export default function HomePage() {
           // Parse and convert date
           const examDate = parseDate(schedule.examDate);
           if (!examDate || isNaN(examDate.getTime())) {
-            console.error("Invalid date:", schedule.examDate);
+            console.error("Invalid date for schedule:", schedule.examDate, schedule);
             return "";
           }
           
@@ -501,8 +590,9 @@ END:VEVENT`;
       .filter(event => event.length > 0)
       .join("\n");
     
-    if (!icsContent) {
-      console.error("No valid events to export");
+    if (!icsContent || icsContent.trim().length === 0) {
+      console.error("No valid events to export. Schedules:", schedules);
+      alert("لا يمكن تصدير التقويم: لا توجد أحداث صالحة. يرجى التحقق من التواريخ.");
       return;
     }
     
@@ -516,16 +606,21 @@ X-WR-TIMEZONE:Asia/Riyadh
 ${icsContent}
 END:VCALENDAR`;
     
-    // Create blob with UTF-8 BOM for better compatibility
-    const BOM = "\uFEFF";
-    const blob = new Blob([BOM + ics], { type: "text/calendar;charset=utf-8" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `جدول_الامتحانات_${studentId}.ics`;
-    link.click();
-    
-    // Clean up
-    setTimeout(() => URL.revokeObjectURL(link.href), 100);
+    try {
+      // Create blob with UTF-8 BOM for better compatibility
+      const BOM = "\uFEFF";
+      const blob = new Blob([BOM + ics], { type: "text/calendar;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `جدول_الامتحانات_${studentId}.ics`;
+      link.click();
+      
+      // Clean up
+      setTimeout(() => URL.revokeObjectURL(link.href), 100);
+    } catch (err) {
+      console.error("Failed to create calendar file:", err);
+      alert("حدث خطأ أثناء تصدير التقويم. يرجى المحاولة مرة أخرى.");
+    }
   };
 
   // Show loading state while checking activation status

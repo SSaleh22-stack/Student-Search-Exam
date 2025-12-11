@@ -97,143 +97,186 @@ export default function LecturerPage() {
 
   const handleExportPDF = async () => {
     const { jsPDF } = await import("jspdf");
+    const html2canvas = (await import("html2canvas")).default;
     
     try {
+      // Create professional table design
+      const wrapper = document.createElement("div");
+      wrapper.style.width = "1400px";
+      wrapper.style.margin = "0 auto";
+      wrapper.style.backgroundColor = "#ffffff";
+      wrapper.style.fontFamily = "Arial, sans-serif";
+      
+      // Header
+      const header = document.createElement("div");
+      header.style.backgroundColor = "#8b5cf6";
+      header.style.color = "#ffffff";
+      header.style.padding = "25px";
+      header.style.textAlign = "center";
+      header.innerHTML = `
+        <h1 style="margin: 0; font-size: 28px; font-weight: bold; margin-bottom: 8px;">جدول امتحانات المحاضرين</h1>
+        <p style="margin: 0; font-size: 16px;">اسم المحاضر: ${lecturerName}</p>
+      `;
+      wrapper.appendChild(header);
+      
+      // Table Container
+      const tableContainer = document.createElement("div");
+      tableContainer.style.padding = "20px";
+      
+      // Create table
+      const table = document.createElement("table");
+      table.style.width = "100%";
+      table.style.borderCollapse = "collapse";
+      table.style.marginTop = "10px";
+      
+      // Table Header
+      const thead = document.createElement("thead");
+      const headerRow = document.createElement("tr");
+      headerRow.style.backgroundColor = "#f3f4f6";
+      headerRow.style.borderBottom = "2px solid #d1d5db";
+      
+      const headers = ["اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "القاعة", "الفترة"];
+      headers.forEach(headerText => {
+        const th = document.createElement("th");
+        th.textContent = headerText;
+        th.style.padding = "12px 8px";
+        th.style.textAlign = "right";
+        th.style.fontWeight = "bold";
+        th.style.fontSize = "12px";
+        th.style.color = "#1f2937";
+        th.style.borderRight = "1px solid #e5e7eb";
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+      
+      // Table Body
+      const tbody = document.createElement("tbody");
+      exams.forEach((exam, index) => {
+        const row = document.createElement("tr");
+        if (index % 2 === 0) {
+          row.style.backgroundColor = "#f9fafb";
+        }
+        row.style.borderBottom = "1px solid #e5e7eb";
+        
+        const cells = [
+          exam.courseName,
+          exam.courseCode,
+          exam.section,
+          formatDate(exam.examDate),
+          exam.periodStart,
+          exam.room,
+          exam.examPeriod || ""
+        ];
+        
+        cells.forEach((cellText, cellIndex) => {
+          const td = document.createElement("td");
+          td.textContent = cellText;
+          td.style.padding = "12px 8px";
+          td.style.textAlign = "right";
+          td.style.fontSize = "11px";
+          td.style.color = "#111827";
+          td.style.borderRight = "1px solid #e5e7eb";
+          row.appendChild(td);
+        });
+        
+        tbody.appendChild(row);
+      });
+      table.appendChild(tbody);
+      tableContainer.appendChild(table);
+      
+      // Summary
+      const summary = document.createElement("div");
+      summary.style.marginTop = "20px";
+      summary.style.padding = "15px";
+      summary.style.backgroundColor = "#f3f4f6";
+      summary.style.borderRadius = "6px";
+      summary.style.textAlign = "right";
+      summary.innerHTML = `
+        <p style="margin: 0; font-size: 14px; font-weight: bold; color: #1f2937;">
+          إجمالي عدد الامتحانات: ${exams.length}
+        </p>
+      `;
+      tableContainer.appendChild(summary);
+      
+      wrapper.appendChild(tableContainer);
+      
+      // Footer
+      const footer = document.createElement("div");
+      footer.style.textAlign = "center";
+      footer.style.padding = "15px";
+      footer.style.color = "#6b7280";
+      footer.style.fontSize = "11px";
+      footer.style.borderTop = "1px solid #e5e7eb";
+      footer.textContent = `تاريخ الطباعة: ${new Date().toLocaleDateString("ar-SA")}`;
+      wrapper.appendChild(footer);
+      
+      // Temporarily add to DOM
+      wrapper.style.position = "absolute";
+      wrapper.style.left = "-9999px";
+      wrapper.style.top = "0";
+      document.body.appendChild(wrapper);
+      
+      // Convert to canvas
+      const canvas = await html2canvas(wrapper, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        width: wrapper.scrollWidth,
+        height: wrapper.scrollHeight,
+      });
+      
+      // Remove wrapper from DOM
+      document.body.removeChild(wrapper);
+      
+      // Create PDF from canvas
+      const imgData = canvas.toDataURL("image/png", 1.0);
       const pdf = new jsPDF("p", "mm", "a4");
       const pageWidth = 210;
       const pageHeight = 297;
-      const margin = 15;
+      const margin = 10;
       const contentWidth = pageWidth - (margin * 2);
-      let yPos = margin;
+      const imgWidth = contentWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
-      // Helper function to add new page if needed
-      const checkNewPage = (requiredHeight: number) => {
-        if (yPos + requiredHeight > pageHeight - 20) {
-          pdf.addPage();
-          yPos = margin;
-          return true;
+      let heightLeft = imgHeight;
+      let position = margin;
+      const maxContentHeight = pageHeight - (margin * 2);
+      
+      // Add first page
+      if (imgHeight <= maxContentHeight) {
+        pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight, undefined, "FAST");
+      } else {
+        // Split into multiple pages
+        let yOffset = 0;
+        let pageNumber = 1;
+        
+        while (heightLeft > 0) {
+          if (pageNumber > 1) {
+            pdf.addPage();
+            position = margin;
+          }
+          
+          const pageImgHeight = Math.min(heightLeft, maxContentHeight);
+          const sourceY = (yOffset / imgHeight) * canvas.height;
+          const sourceHeight = (pageImgHeight / imgHeight) * canvas.height;
+          
+          // Create a temporary canvas for this page slice
+          const pageCanvas = document.createElement("canvas");
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = sourceHeight;
+          const ctx = pageCanvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
+            const pageImgData = pageCanvas.toDataURL("image/png", 1.0);
+            pdf.addImage(pageImgData, "PNG", margin, position, imgWidth, pageImgHeight, undefined, "FAST");
+          }
+          
+          yOffset += pageImgHeight;
+          heightLeft -= pageImgHeight;
+          pageNumber++;
         }
-        return false;
-      };
-      
-      // Professional Header
-      pdf.setFillColor(139, 92, 246); // Purple-600
-      pdf.rect(0, 0, pageWidth, 25, "F");
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(20);
-      pdf.setFont("helvetica", "bold");
-      pdf.text("جدول امتحانات المحاضرين", pageWidth / 2, 12, { align: "center" });
-      pdf.setFontSize(11);
-      pdf.text(`اسم المحاضر: ${lecturerName}`, pageWidth / 2, 20, { align: "center" });
-      
-      // Reset text color
-      pdf.setTextColor(0, 0, 0);
-      yPos = 35;
-      
-      // Table Header
-      checkNewPage(15);
-      pdf.setFillColor(243, 244, 246); // Gray-100
-      pdf.rect(margin, yPos, contentWidth, 12, "F");
-      pdf.setDrawColor(209, 213, 219); // Gray-300
-      pdf.setLineWidth(0.5);
-      pdf.rect(margin, yPos, contentWidth, 12);
-      
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "bold");
-      pdf.setTextColor(31, 41, 55); // Gray-800
-      
-      const colWidths = [45, 35, 25, 25, 25, 30];
-      const headers = ["اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "القاعة"];
-      let xPos = margin + 2;
-      
-      headers.forEach((header, index) => {
-        pdf.text(header, xPos, yPos + 8);
-        xPos += colWidths[index];
-      });
-      
-      yPos += 15;
-      
-      // Table Rows
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-      pdf.setTextColor(17, 24, 39); // Gray-900
-      
-      exams.forEach((exam, index) => {
-        checkNewPage(25);
-        
-        // Alternate row colors
-        if (index % 2 === 0) {
-          pdf.setFillColor(249, 250, 251); // Gray-50
-          pdf.rect(margin, yPos, contentWidth, 23, "F");
-        }
-        
-        // Draw row border
-        pdf.setDrawColor(229, 231, 235); // Gray-200
-        pdf.rect(margin, yPos, contentWidth, 23);
-        
-        // Course Name
-        pdf.text(exam.courseName.substring(0, 25), margin + 2, yPos + 6);
-        
-        // Course Code
-        pdf.text(exam.courseCode, margin + 47, yPos + 6);
-        
-        // Section
-        pdf.text(exam.section, margin + 82, yPos + 6);
-        
-        // Date
-        pdf.text(formatDate(exam.examDate), margin + 107, yPos + 6);
-        
-        // Time
-        pdf.text(exam.periodStart, margin + 132, yPos + 6);
-        
-        // Room
-        pdf.text(exam.room.substring(0, 15), margin + 157, yPos + 6);
-        
-        // Second line - Additional info
-        pdf.setFontSize(8);
-        pdf.setTextColor(107, 114, 128); // Gray-500
-        let secondLineX = margin + 2;
-        
-        if (exam.examPeriod) {
-          pdf.text(`الفترة: ${exam.examPeriod}`, secondLineX, yPos + 12);
-          secondLineX += 50;
-        }
-        
-        if (exam.role) {
-          pdf.text(`الدور: ${exam.role}`, secondLineX, yPos + 12);
-          secondLineX += 40;
-        }
-        
-        if (exam.numberOfStudents) {
-          pdf.text(`الطلاب: ${exam.numberOfStudents}`, secondLineX, yPos + 12);
-        }
-        
-        pdf.setFontSize(9);
-        pdf.setTextColor(17, 24, 39);
-        yPos += 25;
-      });
-      
-      // Summary
-      checkNewPage(15);
-      yPos += 5;
-      pdf.setDrawColor(209, 213, 219);
-      pdf.setLineWidth(0.5);
-      pdf.line(margin, yPos, pageWidth - margin, yPos);
-      yPos += 8;
-      
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(`إجمالي عدد الامتحانات: ${exams.length}`, margin, yPos);
-      
-      // Footer on all pages
-      const totalPages = pdf.getNumberOfPages();
-      for (let i = 1; i <= totalPages; i++) {
-        pdf.setPage(i);
-        pdf.setFontSize(8);
-        pdf.setTextColor(156, 163, 175); // Gray-400
-        pdf.text(`صفحة ${i} من ${totalPages}`, pageWidth / 2, pageHeight - 8, { align: "center" });
-        const currentDate = new Date().toLocaleDateString("ar-SA");
-        pdf.text(`تاريخ الطباعة: ${currentDate}`, margin, pageHeight - 8);
       }
       
       pdf.save(`جدول_المحاضر_${lecturerName.replace(/\s+/g, "_")}.pdf`);
