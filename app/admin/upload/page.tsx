@@ -642,7 +642,7 @@ export default function AdminUploadPage() {
     }
   };
 
-  const readHeaders = async (file: File, fileType: "exam" | "enroll" | "lecturer") => {
+  const readHeaders = async (file: File, fileType: "exam" | "enroll" | "lecturer", preserveMapping: boolean = false) => {
     setReadingHeaders(true);
     setReadingProgress(0);
     
@@ -727,33 +727,46 @@ No header mapping needed.`);
       
       if (fileType === "exam") {
         setExamHeaders(data.headers);
-        // Auto-map headers (try to match)
-        const autoMapping: HeaderMapping = {};
-        data.requiredFields.forEach((field: string) => {
-          const normalizedField = field.toLowerCase().replace(/_/g, "");
-          const matched = data.headers.find((h: string) => {
-            const normalized = h.toLowerCase().replace(/\s+/g, "").replace(/_/g, "");
-            return normalized.includes(normalizedField) || normalizedField.includes(normalized);
+        // If preserveMapping is true, keep existing mapping; otherwise auto-map
+        if (preserveMapping && examMapping && Object.keys(examMapping).length > 0) {
+          // Keep existing mapping, just update headers
+          setExamMapping(examMapping);
+        } else {
+          // Auto-map headers (try to match)
+          const autoMapping: HeaderMapping = {};
+          data.requiredFields.forEach((field: string) => {
+            const normalizedField = field.toLowerCase().replace(/_/g, "");
+            const matched = data.headers.find((h: string) => {
+              const normalized = h.toLowerCase().replace(/\s+/g, "").replace(/_/g, "");
+              return normalized.includes(normalizedField) || normalizedField.includes(normalized);
+            });
+            if (matched) {
+              autoMapping[field] = matched;
+            }
           });
-          if (matched) {
-            autoMapping[field] = matched;
-          }
-        });
-        setExamMapping(autoMapping);
+          setExamMapping(autoMapping);
+        }
       } else if (fileType === "lecturer") {
         setLecturerHeaders(data.headers);
-        const autoMapping: HeaderMapping = {};
-        data.requiredFields.forEach((field: string) => {
-          const normalizedField = field.toLowerCase().replace(/_/g, "");
-          const matched = data.headers.find((h: string) => {
-            const normalized = h.toLowerCase().replace(/\s+/g, "").replace(/_/g, "");
-            return normalized.includes(normalizedField) || normalizedField.includes(normalized);
+        // If preserveMapping is true, keep existing mapping; otherwise auto-map
+        if (preserveMapping && lecturerMapping && Object.keys(lecturerMapping).length > 0) {
+          // Keep existing mapping, just update headers
+          setLecturerMapping(lecturerMapping);
+        } else {
+          // Auto-map headers (try to match)
+          const autoMapping: HeaderMapping = {};
+          data.requiredFields.forEach((field: string) => {
+            const normalizedField = field.toLowerCase().replace(/_/g, "");
+            const matched = data.headers.find((h: string) => {
+              const normalized = h.toLowerCase().replace(/\s+/g, "").replace(/_/g, "");
+              return normalized.includes(normalizedField) || normalizedField.includes(normalized);
+            });
+            if (matched) {
+              autoMapping[field] = matched;
+            }
           });
-          if (matched) {
-            autoMapping[field] = matched;
-          }
-        });
-        setLecturerMapping(autoMapping);
+          setLecturerMapping(autoMapping);
+        }
       } else {
         setEnrollHeaders(data.headers);
         const autoMapping: HeaderMapping = {};
@@ -1562,7 +1575,7 @@ No header mapping needed.`);
                             onClick={() => {
                               setExamAutoDetectSuccess(false);
                               if (examFiles.length > 0) {
-                                readHeaders(examFiles[0], "exam");
+                                readHeaders(examFiles[0], "exam", true);
                               }
                             }}
                             className="mt-3 px-4 py-2 text-sm font-medium text-green-700 bg-green-100 hover:bg-green-200 border border-green-300 rounded-md transition-colors"
@@ -1615,7 +1628,7 @@ No header mapping needed.`);
                             onClick={() => {
                               setLecturerAutoDetectSuccess(false);
                               if (lecturerFiles.length > 0) {
-                                readHeaders(lecturerFiles[0], "lecturer");
+                                readHeaders(lecturerFiles[0], "lecturer", true);
                               }
                             }}
                             className="mt-3 px-4 py-2 text-sm font-medium text-green-700 bg-green-100 hover:bg-green-200 border border-green-300 rounded-md transition-colors"
