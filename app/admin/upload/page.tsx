@@ -127,6 +127,8 @@ export default function AdminUploadPage() {
   const [lecturerActivateTime, setLecturerActivateTime] = useState("");
   const [scheduleStudentPage, setScheduleStudentPage] = useState(false);
   const [scheduleLecturerPage, setScheduleLecturerPage] = useState(false);
+  const [studentScheduleSaved, setStudentScheduleSaved] = useState(false);
+  const [lecturerScheduleSaved, setLecturerScheduleSaved] = useState(false);
   const [currentLocalTime, setCurrentLocalTime] = useState("");
   const [currentLocalDate, setCurrentLocalDate] = useState("");
   
@@ -448,6 +450,9 @@ export default function AdminUploadPage() {
         setStudentActivateTime(data.studentActivateTime || "");
         setLecturerActivateDate(data.lecturerActivateDate || "");
         setLecturerActivateTime(data.lecturerActivateTime || "");
+        // Set saved state if there's an existing scheduled activation
+        setStudentScheduleSaved(!!(data.studentActivateDate && data.studentActivateTime));
+        setLecturerScheduleSaved(!!(data.lecturerActivateDate && data.lecturerActivateTime));
       }
     } catch (err) {
       console.error("Failed to load settings:", err);
@@ -512,13 +517,25 @@ export default function AdminUploadPage() {
       // Update checkbox states based on scheduled activation
       if (data.studentActivateDate && data.studentActivateTime) {
         setScheduleStudentPage(true);
+        if (type === "student") {
+          setStudentScheduleSaved(true); // Mark as saved when schedule is successfully saved
+        }
       } else {
         setScheduleStudentPage(false);
+        if (type === "student") {
+          setStudentScheduleSaved(false);
+        }
       }
       if (data.lecturerActivateDate && data.lecturerActivateTime) {
         setScheduleLecturerPage(true);
+        if (type === "lecturer") {
+          setLecturerScheduleSaved(true); // Mark as saved when schedule is successfully saved
+        }
       } else {
         setScheduleLecturerPage(false);
+        if (type === "lecturer") {
+          setLecturerScheduleSaved(false);
+        }
       }
       
       // Show success message based on what was saved
@@ -2469,6 +2486,7 @@ No header mapping needed.`);
                           setScheduleStudentPage(false);
                           setStudentActivateDate("");
                           setStudentActivateTime("");
+                          setStudentScheduleSaved(false);
                           // Clear scheduled activation from database
                           try {
                             const res = await fetch("/api/admin/settings", {
@@ -2491,6 +2509,7 @@ No header mapping needed.`);
                           }
                         } else {
                           setScheduleStudentPage(true);
+                          setStudentScheduleSaved(false); // Reset saved state when checkbox is checked
                         }
                       }}
                       className="w-4 h-4 text-blue-600 rounded"
@@ -2512,7 +2531,10 @@ No header mapping needed.`);
                           <input
                             type="date"
                             value={studentActivateDate}
-                            onChange={(e) => setStudentActivateDate(e.target.value)}
+                            onChange={(e) => {
+                              setStudentActivateDate(e.target.value);
+                              setStudentScheduleSaved(false); // Reset saved state when date changes
+                            }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                           />
                         </div>
@@ -2521,7 +2543,10 @@ No header mapping needed.`);
                           <input
                             type="time"
                             value={studentActivateTime}
-                            onChange={(e) => setStudentActivateTime(e.target.value)}
+                            onChange={(e) => {
+                              setStudentActivateTime(e.target.value);
+                              setStudentScheduleSaved(false); // Reset saved state when time changes
+                            }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                           />
                         </div>
@@ -2537,7 +2562,7 @@ No header mapping needed.`);
                       حفظ الجدولة
                     </button>
                   )}
-                  {studentActivateDate && studentActivateTime && (
+                  {studentScheduleSaved && studentActivateDate && studentActivateTime && (
                     <div className="bg-blue-100 border border-blue-300 rounded-md p-3 flex items-center gap-2">
                       <CheckCircle className="w-5 h-5 text-blue-600" />
                       <div>
@@ -2615,6 +2640,7 @@ No header mapping needed.`);
                           }
                         } else {
                           setScheduleLecturerPage(true);
+                          setLecturerScheduleSaved(false); // Reset saved state when checkbox is checked
                         }
                       }}
                       className="w-4 h-4 text-purple-600 rounded"
@@ -2636,7 +2662,10 @@ No header mapping needed.`);
                           <input
                             type="date"
                             value={lecturerActivateDate}
-                            onChange={(e) => setLecturerActivateDate(e.target.value)}
+                            onChange={(e) => {
+                              setLecturerActivateDate(e.target.value);
+                              setLecturerScheduleSaved(false); // Reset saved state when date changes
+                            }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                           />
                         </div>
@@ -2645,7 +2674,10 @@ No header mapping needed.`);
                           <input
                             type="time"
                             value={lecturerActivateTime}
-                            onChange={(e) => setLecturerActivateTime(e.target.value)}
+                            onChange={(e) => {
+                              setLecturerActivateTime(e.target.value);
+                              setLecturerScheduleSaved(false); // Reset saved state when time changes
+                            }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                           />
                         </div>
@@ -2661,7 +2693,7 @@ No header mapping needed.`);
                       حفظ الجدولة
                     </button>
                   )}
-                  {lecturerActivateDate && lecturerActivateTime && (
+                  {lecturerScheduleSaved && lecturerActivateDate && lecturerActivateTime && (
                     <div className="bg-purple-100 border border-purple-300 rounded-md p-3 flex items-center gap-2">
                       <CheckCircle className="w-5 h-5 text-purple-600" />
                       <div>
