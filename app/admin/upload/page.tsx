@@ -85,6 +85,7 @@ export default function AdminUploadPage() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [readingProgress, setReadingProgress] = useState(0);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -642,6 +643,17 @@ export default function AdminUploadPage() {
 
   const readHeaders = async (file: File, fileType: "exam" | "enroll" | "lecturer") => {
     setReadingHeaders(true);
+    setReadingProgress(0);
+    
+    // Simulate progress for reading headers
+    let progressInterval: NodeJS.Timeout | null = null;
+    progressInterval = setInterval(() => {
+      setReadingProgress(prev => {
+        if (prev >= 90) return prev;
+        return prev + Math.random() * 15;
+      });
+    }, 200);
+    
     try {
       // For enrollment files, check if it's block-structured first
       if (fileType === "enroll") {
@@ -742,12 +754,17 @@ No header mapping needed.`);
         setEnrollMapping(autoMapping);
       }
       
+      setReadingProgress(100);
       setShowMapping(true);
     } catch (err) {
       console.error("Error reading headers:", err);
       setError("فشل قراءة عناوين Excel");
     } finally {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
       setReadingHeaders(false);
+      setReadingProgress(0);
     }
   };
 
@@ -755,16 +772,31 @@ No header mapping needed.`);
     const files = Array.from(e.target.files || []);
     setExamFiles(files);
     if (files.length > 0) {
-      setReadingHeaders(true);
       // Check auto-detection for the first file
       const firstFile = files[0];
       try {
+        setReadingHeaders(true);
+        setReadingProgress(0);
+        
+        // Simulate progress for auto-detection check
+        let progressInterval: NodeJS.Timeout | null = null;
+        progressInterval = setInterval(() => {
+          setReadingProgress(prev => {
+            if (prev >= 40) return prev;
+            return prev + Math.random() * 10;
+          });
+        }, 150);
+        
         const checkFormData = new FormData();
         checkFormData.append("file", firstFile);
         const checkRes = await fetch("/api/admin/check-exam-auto-detect", {
           method: "POST",
           body: checkFormData,
         });
+        
+        if (progressInterval) {
+          clearInterval(progressInterval);
+        }
         
         if (checkRes.ok) {
           const checkData = await safeJsonParse(checkRes);
@@ -773,23 +805,26 @@ No header mapping needed.`);
             setExamMapping(checkData.mapping);
             setExamAutoDetectSuccess(true);
             setShowMapping(false);
+            setReadingProgress(100);
+            setTimeout(() => {
+              setReadingHeaders(false);
+              setReadingProgress(0);
+            }, 500);
             return;
           } else {
             // Auto-detection failed, show mapping UI
             setExamAutoDetectSuccess(false);
-            readHeaders(firstFile, "exam");
+            await readHeaders(firstFile, "exam");
           }
         } else {
           // If check fails, fall back to showing mapping UI
           setExamAutoDetectSuccess(false);
-          readHeaders(firstFile, "exam");
+          await readHeaders(firstFile, "exam");
         }
       } catch (err) {
         // If check fails, fall back to showing mapping UI
         setExamAutoDetectSuccess(false);
         await readHeaders(firstFile, "exam");
-      } finally {
-        setReadingHeaders(false);
       }
     }
   };
@@ -798,13 +833,8 @@ No header mapping needed.`);
     const files = Array.from(e.target.files || []);
     setEnrollFiles(files);
     if (files.length > 0) {
-      setReadingHeaders(true);
-      try {
-        // Read headers from the first file
-        await readHeaders(files[0], "enroll");
-      } finally {
-        setReadingHeaders(false);
-      }
+      // Read headers from the first file
+      await readHeaders(files[0], "enroll");
     }
   };
 
@@ -812,13 +842,8 @@ No header mapping needed.`);
     const files = Array.from(e.target.files || []);
     setLecturerFiles(files);
     if (files.length > 0) {
-      setReadingHeaders(true);
-      try {
-        // Read headers from the first file
-        await readHeaders(files[0], "lecturer");
-      } finally {
-        setReadingHeaders(false);
-      }
+      // Read headers from the first file
+      await readHeaders(files[0], "lecturer");
     }
   };
 
@@ -1140,13 +1165,46 @@ No header mapping needed.`);
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 relative">
       {/* Loading Overlay */}
       {isProcessing && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-            <p className="text-gray-700 font-medium">
-              {uploading ? "Uploading files..." : "Reading file headers..."}
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-center mb-4">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
+              {uploading ? "جاري رفع الملفات..." : "جاري قراءة رؤوس الملفات..."}
+            </h3>
+            <p className="text-sm text-gray-600 text-center mb-6">
+              {uploading ? "يرجى الانتظار، لا تغلق هذه الصفحة" : "يرجى الانتظار أثناء قراءة الملف"}
             </p>
-            <p className="text-sm text-gray-500">Please wait, do not close this page</p>
+            
+            {/* Progress Bar */}
+            <div className="w-full space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-700 font-medium">التقدم</span>
+                <span className="text-blue-600 font-semibold">{uploading ? uploadProgress : readingProgress}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div
+                  className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out flex items-center justify-end pr-1"
+                  style={{ width: `${uploading ? uploadProgress : readingProgress}%` }}
+                >
+                  {(uploading ? uploadProgress : readingProgress) > 10 && (
+                    <span className="text-xs text-white font-medium">{uploading ? uploadProgress : readingProgress}%</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-4 text-xs text-gray-500 text-center">
+              {uploading && uploadProgress < 50 && "جاري رفع الملفات..."}
+              {uploading && uploadProgress >= 50 && uploadProgress < 90 && "جاري معالجة البيانات..."}
+              {uploading && uploadProgress >= 90 && uploadProgress < 100 && "جاري الانتهاء..."}
+              {uploading && uploadProgress === 100 && "اكتمل!"}
+              {!uploading && readingProgress < 50 && "جاري قراءة الملف..."}
+              {!uploading && readingProgress >= 50 && readingProgress < 90 && "جاري استخراج العناوين..."}
+              {!uploading && readingProgress >= 90 && readingProgress < 100 && "جاري الانتهاء..."}
+              {!uploading && readingProgress === 100 && "اكتمل!"}
+            </div>
           </div>
         </div>
       )}

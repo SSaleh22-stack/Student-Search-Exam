@@ -277,6 +277,7 @@ export default function HomePage() {
                       {schedule.courseName}
                     </h3>
                     <p className="text-sm sm:text-base font-medium text-gray-700">
+                      <span className="text-xs sm:text-sm text-gray-500">رمز المقرر: </span>
                       {schedule.courseCode} • <span className="text-base sm:text-lg font-semibold">الفصل {schedule.classNo}</span>
                     </p>
                   </div>
@@ -288,16 +289,19 @@ export default function HomePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base">
                     <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm text-gray-500">التاريخ:</span>
                     <span className="font-medium break-words">{formatDate(schedule.examDate)}</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base">
                     <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm text-gray-500">الوقت:</span>
                     <span className="font-medium">
                       {schedule.startTime} - {schedule.endTime}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base sm:col-span-2">
                     <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm text-gray-500">المكان:</span>
                     <span className="font-medium break-words">{schedule.place}</span>
                   </div>
                   {schedule.rows && (
