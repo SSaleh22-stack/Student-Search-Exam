@@ -127,10 +127,18 @@ export default function AdminUploadPage() {
   const [newAdminUsername, setNewAdminUsername] = useState("");
   const [newAdminPassword, setNewAdminPassword] = useState("");
   const [newAdminIsHead, setNewAdminIsHead] = useState(false);
+  const [newAdminCanUpload, setNewAdminCanUpload] = useState(true);
+  const [newAdminCanManageDatasets, setNewAdminCanManageDatasets] = useState(true);
+  const [newAdminCanManageAdmins, setNewAdminCanManageAdmins] = useState(false);
+  const [newAdminCanManageSettings, setNewAdminCanManageSettings] = useState(false);
   const [editingAdmin, setEditingAdmin] = useState<string | null>(null);
   const [editAdminUsername, setEditAdminUsername] = useState("");
   const [editAdminPassword, setEditAdminPassword] = useState("");
   const [editAdminIsHead, setEditAdminIsHead] = useState(false);
+  const [editAdminCanUpload, setEditAdminCanUpload] = useState(true);
+  const [editAdminCanManageDatasets, setEditAdminCanManageDatasets] = useState(true);
+  const [editAdminCanManageAdmins, setEditAdminCanManageAdmins] = useState(false);
+  const [editAdminCanManageSettings, setEditAdminCanManageSettings] = useState(false);
 
   const checkAuth = useCallback(async () => {
     try {
@@ -196,6 +204,10 @@ export default function AdminUploadPage() {
           username: newAdminUsername.trim(),
           password: newAdminPassword,
           isHeadAdmin: newAdminIsHead,
+          canUpload: newAdminCanUpload,
+          canManageDatasets: newAdminCanManageDatasets,
+          canManageAdmins: newAdminCanManageAdmins,
+          canManageSettings: newAdminCanManageSettings,
         }),
       });
 
@@ -209,6 +221,10 @@ export default function AdminUploadPage() {
       setNewAdminUsername("");
       setNewAdminPassword("");
       setNewAdminIsHead(false);
+      setNewAdminCanUpload(true);
+      setNewAdminCanManageDatasets(true);
+      setNewAdminCanManageAdmins(false);
+      setNewAdminCanManageSettings(false);
       setShowCreateAdminModal(false);
       loadAdmins();
       setTimeout(() => setSuccess(null), 3000);
@@ -227,6 +243,10 @@ export default function AdminUploadPage() {
       const updateData: any = {
         username: editAdminUsername.trim(),
         isHeadAdmin: editAdminIsHead,
+        canUpload: editAdminCanUpload,
+        canManageDatasets: editAdminCanManageDatasets,
+        canManageAdmins: editAdminCanManageAdmins,
+        canManageSettings: editAdminCanManageSettings,
       };
 
       if (editAdminPassword.trim()) {
@@ -250,6 +270,10 @@ export default function AdminUploadPage() {
       setEditAdminUsername("");
       setEditAdminPassword("");
       setEditAdminIsHead(false);
+      setEditAdminCanUpload(true);
+      setEditAdminCanManageDatasets(true);
+      setEditAdminCanManageAdmins(false);
+      setEditAdminCanManageSettings(false);
       loadAdmins();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -285,7 +309,11 @@ export default function AdminUploadPage() {
     setEditingAdmin(admin.id);
     setEditAdminUsername(admin.username);
     setEditAdminPassword("");
-    setEditAdminIsHead(admin.isHeadAdmin);
+    setEditAdminIsHead(admin.isHeadAdmin ?? false);
+    setEditAdminCanUpload(admin.canUpload ?? true);
+    setEditAdminCanManageDatasets(admin.canManageDatasets ?? true);
+    setEditAdminCanManageAdmins(admin.canManageAdmins ?? false);
+    setEditAdminCanManageSettings(admin.canManageSettings ?? false);
   };
 
   const loadSettings = async () => {
@@ -1074,10 +1102,8 @@ No header mapping needed.`);
             {currentAdmin?.isHeadAdmin && (
               <button
                 onClick={() => {
-                  setShowAdminManagement(!showAdminManagement);
-                  if (!showAdminManagement) {
-                    loadAdmins();
-                  }
+                  setShowAdminManagement(true);
+                  loadAdmins();
                 }}
                 className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2"
               >
@@ -1965,29 +1991,47 @@ No header mapping needed.`);
         </div>
       )}
 
-      {/* Admin Management Section (Head Admin Only) */}
+      {/* Admin Management Modal (Head Admin Only) */}
       {currentAdmin?.isHeadAdmin && showAdminManagement && (
-        <div className="mt-6 bg-white rounded-lg shadow-lg p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-              <Shield className="w-5 h-5" />
-              إدارة المسؤولين
-            </h2>
-            <button
-              onClick={() => {
-                setShowCreateAdminModal(true);
-                setNewAdminUsername("");
-                setNewAdminPassword("");
-                setNewAdminIsHead(false);
-              }}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              إضافة مسؤول جديد
-            </button>
-          </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                إدارة المسؤولين
+              </h2>
+              <button
+                onClick={() => {
+                  setShowAdminManagement(false);
+                  setEditingAdmin(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-          <div className="space-y-2">
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex justify-end mb-4">
+                <button
+                  onClick={() => {
+                    setShowCreateAdminModal(true);
+                    setNewAdminUsername("");
+                    setNewAdminPassword("");
+                    setNewAdminIsHead(false);
+                    setNewAdminCanUpload(true);
+                    setNewAdminCanManageDatasets(true);
+                    setNewAdminCanManageAdmins(false);
+                    setNewAdminCanManageSettings(false);
+                  }}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  إضافة مسؤول جديد
+                </button>
+              </div>
+
+              <div className="space-y-2">
             {admins.length === 0 ? (
               <p className="text-gray-500 text-center py-8">لا توجد حسابات مسؤولين</p>
             ) : (
@@ -1998,11 +2042,31 @@ No header mapping needed.`);
                 >
                   <div className="flex items-center gap-3">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-gray-900">{admin.username}</span>
                         {admin.isHeadAdmin && (
                           <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
                             رئيس المسؤولين
+                          </span>
+                        )}
+                        {admin.canUpload && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                            رفع الملفات
+                          </span>
+                        )}
+                        {admin.canManageDatasets && (
+                          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                            إدارة البيانات
+                          </span>
+                        )}
+                        {admin.canManageAdmins && (
+                          <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
+                            إدارة المسؤولين
+                          </span>
+                        )}
+                        {admin.canManageSettings && (
+                          <span className="px-2 py-1 bg-pink-100 text-pink-800 text-xs font-medium rounded-full">
+                            إدارة الإعدادات
                           </span>
                         )}
                       </div>
@@ -2026,6 +2090,10 @@ No header mapping needed.`);
                             setEditAdminUsername("");
                             setEditAdminPassword("");
                             setEditAdminIsHead(false);
+                            setEditAdminCanUpload(true);
+                            setEditAdminCanManageDatasets(true);
+                            setEditAdminCanManageAdmins(false);
+                            setEditAdminCanManageSettings(false);
                           }}
                           className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
                         >
@@ -2058,49 +2126,103 @@ No header mapping needed.`);
             )}
           </div>
 
-          {/* Inline Edit Form */}
-          {editingAdmin && admins.find(a => a.id === editingAdmin) && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <h3 className="font-medium text-gray-900 mb-3">تعديل المسؤول</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    اسم المستخدم
-                  </label>
-                  <input
-                    type="text"
-                    value={editAdminUsername}
-                    onChange={(e) => setEditAdminUsername(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+              {/* Inline Edit Form */}
+              {editingAdmin && admins.find(a => a.id === editingAdmin) && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h3 className="font-medium text-gray-900 mb-3">تعديل المسؤول</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        اسم المستخدم
+                      </label>
+                      <input
+                        type="text"
+                        value={editAdminUsername}
+                        onChange={(e) => setEditAdminUsername(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        كلمة المرور الجديدة (اتركها فارغة للاحتفاظ بالقديمة)
+                      </label>
+                      <input
+                        type="password"
+                        value={editAdminPassword}
+                        onChange={(e) => setEditAdminPassword(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="أدخل كلمة مرور جديدة"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="editAdminIsHead"
+                          checked={editAdminIsHead}
+                          onChange={(e) => setEditAdminIsHead(e.target.checked)}
+                          className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                        />
+                        <label htmlFor="editAdminIsHead" className="text-sm text-gray-700">
+                          رئيس المسؤولين
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="editAdminCanUpload"
+                          checked={editAdminCanUpload}
+                          onChange={(e) => setEditAdminCanUpload(e.target.checked)}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <label htmlFor="editAdminCanUpload" className="text-sm text-gray-700">
+                          يمكنه رفع الملفات
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="editAdminCanManageDatasets"
+                          checked={editAdminCanManageDatasets}
+                          onChange={(e) => setEditAdminCanManageDatasets(e.target.checked)}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <label htmlFor="editAdminCanManageDatasets" className="text-sm text-gray-700">
+                          يمكنه إدارة مجموعات البيانات
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="editAdminCanManageAdmins"
+                          checked={editAdminCanManageAdmins}
+                          onChange={(e) => setEditAdminCanManageAdmins(e.target.checked)}
+                          disabled={!editAdminIsHead}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
+                        />
+                        <label htmlFor="editAdminCanManageAdmins" className="text-sm text-gray-700">
+                          يمكنه إدارة المسؤولين (لرئيس المسؤولين فقط)
+                        </label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="editAdminCanManageSettings"
+                          checked={editAdminCanManageSettings}
+                          onChange={(e) => setEditAdminCanManageSettings(e.target.checked)}
+                          disabled={!editAdminIsHead}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
+                        />
+                        <label htmlFor="editAdminCanManageSettings" className="text-sm text-gray-700">
+                          يمكنه إدارة إعدادات صفحات البحث (لرئيس المسؤولين فقط)
+                        </label>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    كلمة المرور الجديدة (اتركها فارغة للاحتفاظ بالقديمة)
-                  </label>
-                  <input
-                    type="password"
-                    value={editAdminPassword}
-                    onChange={(e) => setEditAdminPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="أدخل كلمة مرور جديدة"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="editAdminIsHead"
-                    checked={editAdminIsHead}
-                    onChange={(e) => setEditAdminIsHead(e.target.checked)}
-                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                  />
-                  <label htmlFor="editAdminIsHead" className="text-sm text-gray-700">
-                    رئيس المسؤولين
-                  </label>
-                </div>
-              </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       )}
 
@@ -2184,17 +2306,69 @@ No header mapping needed.`);
                   placeholder="أدخل كلمة المرور"
                 />
               </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="newAdminIsHead"
-                  checked={newAdminIsHead}
-                  onChange={(e) => setNewAdminIsHead(e.target.checked)}
-                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                />
-                <label htmlFor="newAdminIsHead" className="text-sm text-gray-700">
-                  رئيس المسؤولين
-                </label>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="newAdminIsHead"
+                    checked={newAdminIsHead}
+                    onChange={(e) => setNewAdminIsHead(e.target.checked)}
+                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                  />
+                  <label htmlFor="newAdminIsHead" className="text-sm text-gray-700">
+                    رئيس المسؤولين
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="newAdminCanUpload"
+                    checked={newAdminCanUpload}
+                    onChange={(e) => setNewAdminCanUpload(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <label htmlFor="newAdminCanUpload" className="text-sm text-gray-700">
+                    يمكنه رفع الملفات
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="newAdminCanManageDatasets"
+                    checked={newAdminCanManageDatasets}
+                    onChange={(e) => setNewAdminCanManageDatasets(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <label htmlFor="newAdminCanManageDatasets" className="text-sm text-gray-700">
+                    يمكنه إدارة مجموعات البيانات
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="newAdminCanManageAdmins"
+                    checked={newAdminCanManageAdmins}
+                    onChange={(e) => setNewAdminCanManageAdmins(e.target.checked)}
+                    disabled={!newAdminIsHead}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
+                  />
+                  <label htmlFor="newAdminCanManageAdmins" className="text-sm text-gray-700">
+                    يمكنه إدارة المسؤولين (لرئيس المسؤولين فقط)
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="newAdminCanManageSettings"
+                    checked={newAdminCanManageSettings}
+                    onChange={(e) => setNewAdminCanManageSettings(e.target.checked)}
+                    disabled={!newAdminIsHead}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
+                  />
+                  <label htmlFor="newAdminCanManageSettings" className="text-sm text-gray-700">
+                    يمكنه إدارة إعدادات صفحات البحث (لرئيس المسؤولين فقط)
+                  </label>
+                </div>
               </div>
               <div className="flex gap-2">
                 <button
