@@ -135,9 +135,9 @@ export default function HomePage() {
     const html2canvas = (await import("html2canvas")).default;
     
     try {
-      // Create professional table design
+      // Create professional table design - landscape with bigger table
       const wrapper = document.createElement("div");
-      wrapper.style.width = "1200px";
+      wrapper.style.width = "1600px";
       wrapper.style.margin = "0 auto";
       wrapper.style.backgroundColor = "#ffffff";
       wrapper.style.fontFamily = "Arial, sans-serif";
@@ -146,23 +146,23 @@ export default function HomePage() {
       const header = document.createElement("div");
       header.style.backgroundColor = "#2563eb";
       header.style.color = "#ffffff";
-      header.style.padding = "25px";
+      header.style.padding = "30px";
       header.style.textAlign = "center";
       header.innerHTML = `
-        <h1 style="margin: 0; font-size: 28px; font-weight: bold; margin-bottom: 8px;">جدول الامتحانات</h1>
-        <p style="margin: 0; font-size: 16px;">رقم الطالب: ${studentId}</p>
+        <h1 style="margin: 0; font-size: 32px; font-weight: bold; margin-bottom: 10px;">جدول الامتحانات</h1>
+        <p style="margin: 0; font-size: 18px;">رقم الطالب: ${studentId}</p>
       `;
       wrapper.appendChild(header);
       
       // Table Container
       const tableContainer = document.createElement("div");
-      tableContainer.style.padding = "20px";
+      tableContainer.style.padding = "25px";
       
       // Create table
       const table = document.createElement("table");
       table.style.width = "100%";
       table.style.borderCollapse = "collapse";
-      table.style.marginTop = "10px";
+      table.style.marginTop = "15px";
       
       // Table Header
       const thead = document.createElement("thead");
@@ -174,10 +174,10 @@ export default function HomePage() {
       headers.forEach(headerText => {
         const th = document.createElement("th");
         th.textContent = headerText;
-        th.style.padding = "12px 8px";
+        th.style.padding = "18px 14px";
         th.style.textAlign = "right";
         th.style.fontWeight = "bold";
-        th.style.fontSize = "12px";
+        th.style.fontSize = "16px";
         th.style.color = "#1f2937";
         th.style.borderRight = "1px solid #e5e7eb";
         headerRow.appendChild(th);
@@ -207,9 +207,9 @@ export default function HomePage() {
         cells.forEach((cellText, cellIndex) => {
           const td = document.createElement("td");
           td.textContent = cellText;
-          td.style.padding = "10px 8px";
+          td.style.padding = "16px 14px";
           td.style.textAlign = "right";
-          td.style.fontSize = "11px";
+          td.style.fontSize = "15px";
           td.style.color = "#111827";
           td.style.borderRight = "1px solid #e5e7eb";
           row.appendChild(td);
@@ -265,11 +265,11 @@ export default function HomePage() {
       // Remove wrapper from DOM
       document.body.removeChild(wrapper);
       
-      // Create PDF from canvas
+      // Create PDF from canvas - landscape orientation
       const imgData = canvas.toDataURL("image/png", 1.0);
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pageWidth = 210;
-      const pageHeight = 297;
+      const pdf = new jsPDF("l", "mm", "a4"); // "l" for landscape
+      const pageWidth = 297; // Landscape: width and height swapped
+      const pageHeight = 210;
       const margin = 10;
       const contentWidth = pageWidth - (margin * 2);
       const imgWidth = contentWidth;

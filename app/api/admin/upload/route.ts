@@ -389,13 +389,15 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Validate date format (should be YYYY-MM-DD, supports Hijri dates)
+        // Validate date format (should be YYYY-MM-DD, supports both Hijri and Gregorian dates)
         const examDateStr = String(exam.examDate).trim();
         if (!/^\d{4}-\d{2}-\d{2}$/.test(examDateStr)) {
           console.error(`[Upload] Invalid date format for exam:`, exam.examDate);
           failed++;
           continue;
         }
+
+        // Keep date as-is from Excel (Hijri or Gregorian - no conversion)
 
         // Ensure all required fields are present
         if (!exam.courseName || !exam.startTime || !exam.place) {
@@ -475,6 +477,9 @@ export async function POST(request: NextRequest) {
       console.log(`[Upload] Starting to insert ${lecturerResult.validRows.length} lecturer exams into dataset ${dataset.id}`);
       for (const exam of lecturerResult.validRows) {
         try {
+          // Keep date as-is from Excel (Hijri or Gregorian - no conversion)
+          const examDateStr = String(exam.examDate).trim();
+
           await prisma.lecturerExam.create({
             data: {
               datasetId: dataset.id,
@@ -489,7 +494,7 @@ export async function POST(request: NextRequest) {
               room: exam.room.trim(),
               column: exam.column || null,
               day: exam.day?.trim() || null,
-              examDate: exam.examDate,
+              examDate: examDateStr,
               examPeriod: exam.examPeriod.trim(),
               periodStart: exam.periodStart.trim(),
               invigilator: exam.invigilator?.trim() || null,
