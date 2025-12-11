@@ -54,14 +54,33 @@ const lecturerExamRowSchema = z.object({
     z.date(),
     z.number(),
   ]).transform((val) => {
-    // Handle Date object (from Excel)
+    // Handle string dates FIRST - keep Hijri dates as-is, don't convert
+    // This is critical because Excel may convert Hijri to Gregorian, but cell.text preserves the original
+    const str = String(val).trim();
+    
+    // If already in YYYY-MM-DD format, return as is (whether Hijri or Gregorian)
+    // This preserves Hijri dates like "1447-07-01" without conversion
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      // Check if it's Hijri (year between 1200-1600) - keep as-is
+      const year = parseInt(str.substring(0, 4), 10);
+      if (year >= 1200 && year < 1600) {
+        return str; // Keep Hijri dates in Hijri format, don't convert
+      }
+      // If Gregorian, also keep as-is (already in correct format)
+      return str;
+    }
+    
+    // Handle Date object (from Excel) - ONLY if string parsing failed
+    // WARNING: Excel may have converted Hijri to Gregorian, so this might be wrong
     if (val instanceof Date) {
       const year = val.getFullYear();
       const month = String(val.getMonth() + 1).padStart(2, "0");
       const day = String(val.getDate()).padStart(2, "0");
       return `${year}-${month}-${day}`;
     }
-    // Handle Excel serial date number
+    
+    // Handle Excel serial date number - ONLY if string parsing failed
+    // WARNING: Excel may have converted Hijri to Gregorian, so this might be wrong
     if (typeof val === "number") {
       try {
         const excelEpoch = new Date(1899, 11, 30);
@@ -80,12 +99,8 @@ const lecturerExamRowSchema = z.object({
         }
       }
     }
-    // Handle string dates - keep Hijri dates as-is
-    const str = String(val).trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-      return str; // Keep Hijri dates in Hijri format
-    }
-    // Try to parse other date formats
+    
+    // Try to parse other date formats as last resort
     const date = new Date(str);
     if (!isNaN(date.getTime())) {
       const year = date.getFullYear();
@@ -454,15 +469,29 @@ export async function parseLecturerSchedule(
 
       // Handle date formatting - keep Hijri dates as-is
       if (fieldName === "exam_date") {
+        // First, try to get the cell's text value (as displayed in Excel)
+        // This preserves Hijri dates that Excel shows as strings
         const cellText = cell.text?.trim() || "";
+        
+        // If cell text is in YYYY-MM-DD format (could be Hijri like "1447-07-01"), use it
         if (cellText && /^\d{4}-\d{2}-\d{2}$/.test(cellText)) {
-          value = cellText;
-        } else if (value instanceof Date) {
+          isEmpty = false;
+          value = cellText; // Keep Hijri dates as-is from Excel display
+          console.log(`[parseLecturer] Row ${rowNum}: Using cell text value (preserves Hijri): ${cellText}`);
+        }
+        // Handle Date object (Excel Date type) - only if cell text wasn't usable
+        else if (value instanceof Date) {
+          isEmpty = false;
+          // Excel converted it to Gregorian, but we'll format it
           const year = value.getFullYear();
           const month = String(value.getMonth() + 1).padStart(2, "0");
           const day = String(value.getDate()).padStart(2, "0");
           value = `${year}-${month}-${day}`;
-        } else if (typeof value === "number") {
+          console.log(`[parseLecturer] Row ${rowNum}: Date object formatted to: ${value} (WARNING: May have been converted from Hijri)`);
+        }
+        // Handle Excel serial date number - only if cell text wasn't usable
+        else if (typeof value === "number") {
+          isEmpty = false;
           try {
             // Excel serial date: days since January 1, 1900
             const excelEpoch = new Date(1899, 11, 30); // Excel epoch is Dec 30, 1899
@@ -471,17 +500,30 @@ export async function parseLecturerSchedule(
             const month = String(jsDate.getMonth() + 1).padStart(2, "0");
             const day = String(jsDate.getDate()).padStart(2, "0");
             value = `${year}-${month}-${day}`;
+            console.log(`[parseLecturer] Row ${rowNum}: Excel serial date formatted to: ${value} (WARNING: May have been converted from Hijri)`);
           } catch (e) {
+            console.warn(`[parseLecturer] Row ${rowNum}: Failed to convert Excel serial date:`, value, e);
             value = String(value);
           }
-        } else {
+        }
+        // Handle string dates - keep Hijri dates as-is, don't convert
+        else {
           const strValue = String(value || "").trim();
+          if (strValue) {
+            isEmpty = false;
+          }
+          
+          // If it's already in YYYY-MM-DD format, keep it as-is (whether Hijri or Gregorian)
           if (strValue && /^\d{4}-\d{2}-\d{2}$/.test(strValue)) {
+            value = strValue; // Keep Hijri dates in Hijri format, don't convert
+            console.log(`[parseLecturer] Row ${rowNum}: Keeping date string as-is: ${strValue}`);
+          } else {
+            // Not in YYYY-MM-DD format, keep as string
             value = strValue;
           }
         }
+        // Assign the formatted date value to rowData
         rowData[fieldName] = value;
-        if (value) isEmpty = false;
         return;
       }
 

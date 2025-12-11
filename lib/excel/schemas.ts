@@ -19,15 +19,35 @@ export const examScheduleRowSchema = z.object({
     z.date(),
     z.number(),
   ]).transform((val) => {
-    // Handle Date object (from Excel) - convert to YYYY-MM-DD format
-    // Note: Excel may have already converted Hijri to Gregorian, but we'll format it
+    // Handle string dates FIRST - keep Hijri dates as-is, don't convert
+    // This is critical because Excel may convert Hijri to Gregorian, but cell.text preserves the original
+    const str = String(val).trim();
+    
+    // If already in YYYY-MM-DD format, return as is (whether Hijri or Gregorian)
+    // This preserves Hijri dates like "1447-07-01" without conversion
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      // Check if it's Hijri (year between 1200-1600) - keep as-is
+      const year = parseInt(str.substring(0, 4), 10);
+      if (year >= 1200 && year < 1600) {
+        return str; // Keep Hijri dates in Hijri format, don't convert
+      }
+      // If Gregorian, also keep as-is (already in correct format)
+      return str;
+    }
+    
+    // Handle Date object (from Excel) - ONLY if string parsing failed
+    // WARNING: Excel may have converted Hijri to Gregorian, so this might be wrong
     if (val instanceof Date) {
       const year = val.getFullYear();
+      // If year is in Hijri range, this is suspicious - Excel shouldn't create such dates
+      // But we'll format it anyway since we can't recover the original Hijri date
       const month = String(val.getMonth() + 1).padStart(2, "0");
       const day = String(val.getDate()).padStart(2, "0");
       return `${year}-${month}-${day}`;
     }
-    // Handle Excel serial date number
+    
+    // Handle Excel serial date number - ONLY if string parsing failed
+    // WARNING: Excel may have converted Hijri to Gregorian, so this might be wrong
     if (typeof val === "number") {
       try {
         // Excel serial date: days since 1900-01-01
@@ -48,16 +68,8 @@ export const examScheduleRowSchema = z.object({
         }
       }
     }
-    // Handle string dates - keep Hijri dates as-is, don't convert
-    const str = String(val).trim();
     
-    // If already in YYYY-MM-DD format, return as is (whether Hijri or Gregorian)
-    // This preserves Hijri dates like "1447-07-01" without conversion
-    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-      return str; // Keep Hijri dates in Hijri format, don't convert
-    }
-    
-    // Try to parse other date formats
+    // Try to parse other date formats as last resort
     const date = new Date(str);
     if (!isNaN(date.getTime())) {
       const year = date.getFullYear();
