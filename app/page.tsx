@@ -71,21 +71,28 @@ export default function HomePage() {
 
   const formatDate = (dateString: string) => {
     try {
-      // Check if date is already in Hijri format (year between 1200-1600)
+      if (!dateString || !dateString.trim()) {
+        return dateString;
+      }
+      
+      // Data comes from database as-is (already in correct format - Hijri or Gregorian)
+      // Just format it for display without conversion
       const match = dateString.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (match) {
-        const year = parseInt(match[1], 10);
-        // If year is in Hijri range, return as-is
-        if (year >= 1200 && year < 1600) {
-          return dateString; // Already Hijri, return in YYYY-MM-DD format
-        }
-        // Otherwise, convert Gregorian to Hijri
-        const hijriDate = formatHijriDate(dateString);
-        return hijriDate; // Return in YYYY-MM-DD format
+        // Return as-is - database already has correct format
+        return dateString;
       }
-      // If not in YYYY-MM-DD format, try to convert
-      const hijriDate = formatHijriDate(dateString);
-      return hijriDate;
+      
+      // If not in YYYY-MM-DD format, try to parse and format
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+      
+      return dateString; // Return original if can't parse
     } catch {
       return dateString;
     }
@@ -93,17 +100,27 @@ export default function HomePage() {
   
   const formatDateShort = (dateString: string) => {
     try {
-      // Check if date is already in Hijri format
+      if (!dateString || !dateString.trim()) {
+        return dateString;
+      }
+      
+      // Data comes from database as-is (already in correct format)
+      // Just return as-is without conversion
       const match = dateString.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (match) {
-        const year = parseInt(match[1], 10);
-        // If year is in Hijri range, return as-is
-        if (year >= 1200 && year < 1600) {
-          return dateString; // Already Hijri, return in YYYY-MM-DD format
-        }
+        return dateString; // Return as-is - database already has correct format
       }
-      // Convert to Hijri if needed
-      return formatHijriDate(dateString);
+      
+      // If not in YYYY-MM-DD format, try to parse and format
+      const date = new Date(dateString);
+      if (!isNaN(date.getTime())) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+      
+      return dateString; // Return original if can't parse
     } catch {
       return dateString;
     }
