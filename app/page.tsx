@@ -724,6 +724,11 @@ END:VCALENDAR`;
               className="h-12 sm:h-16 md:h-20 w-auto"
             />
           </div>
+          <div className="mb-2">
+            <span className="inline-block px-3 py-1 bg-yellow-100 text-yellow-800 text-xs sm:text-sm font-semibold rounded-full border border-yellow-300">
+              موقع تجريبي
+            </span>
+          </div>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
             البحث عن جدول الامتحانات
           </h1>
