@@ -137,6 +137,9 @@ export default function AdminUploadPage() {
   const [activateTime, setActivateTime] = useState("");
   const [scheduleActivation, setScheduleActivation] = useState(false);
   
+  // Permission tooltip state
+  const [showTooltip, setShowTooltip] = useState<string | null>(null);
+  
   // Admin management (head admin only)
   const [currentAdmin, setCurrentAdmin] = useState<{ username: string; name?: string; isHeadAdmin: boolean; canUpload?: boolean; canManageDatasets?: boolean; canDeleteDatasets?: boolean; canManageSettings?: boolean } | null>(null);
   const [admins, setAdmins] = useState<any[]>([]);
@@ -1460,9 +1463,6 @@ No header mapping needed.`);
   };
 
   const isProcessing = uploading || readingHeaders;
-
-  // Permission tooltip state
-  const [showTooltip, setShowTooltip] = useState<string | null>(null);
 
   // Permission descriptions
   const permissionDescriptions: Record<string, { icon: React.ReactNode; description: string }> = {
