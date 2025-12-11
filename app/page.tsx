@@ -581,6 +581,10 @@ DTEND:${formatICalDate(endDate)}
 SUMMARY:${summary}
 DESCRIPTION:${description}
 LOCATION:${location}
+STATUS:CONFIRMED
+SEQUENCE:0
+CREATED:${formatICalDate(new Date())}
+LAST-MODIFIED:${formatICalDate(new Date())}
 END:VEVENT`;
         } catch (err) {
           console.error("Error creating calendar event:", err, schedule);
@@ -603,23 +607,58 @@ CALSCALE:GREGORIAN
 METHOD:PUBLISH
 X-WR-CALNAME:جدول الامتحانات
 X-WR-TIMEZONE:Asia/Riyadh
+X-WR-CALDESC:جدول الامتحانات
 ${icsContent}
 END:VCALENDAR`;
     
     try {
-      // Create blob with UTF-8 BOM for better compatibility
-      const BOM = "\uFEFF";
-      const blob = new Blob([BOM + ics], { type: "text/calendar;charset=utf-8" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = `جدول_الامتحانات_${studentId}.ics`;
-      link.click();
+      // Detect mobile devices
+      const isMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
-      // Clean up
-      setTimeout(() => URL.revokeObjectURL(link.href), 100);
+      if (isMobile) {
+        // For mobile devices, create blob and use a more compatible approach
+        const blob = new Blob([ics], { type: "text/calendar" });
+        const url = URL.createObjectURL(blob);
+        
+        // Try to trigger download
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `جدول_الامتحانات_${studentId}.ics`;
+        link.style.display = "none";
+        
+        // Add to DOM, click, then remove
+        document.body.appendChild(link);
+        
+        // For iOS, we need to use a different approach
+        if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+          // iOS doesn't support download attribute well, use window.open
+          window.open(url, "_blank");
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }, 100);
+        } else {
+          // For Android and other mobile browsers
+          link.click();
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }, 100);
+        }
+      } else {
+        // For desktop, use standard blob download
+        const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `جدول_الامتحانات_${studentId}.ics`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 100);
+      }
     } catch (err) {
-      console.error("Failed to create calendar file:", err);
-      alert("حدث خطأ أثناء تصدير التقويم. يرجى المحاولة مرة أخرى.");
+      console.error("Failed to export calendar:", err);
+      // Fallback: try data URI
+      const dataUri = `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
+      window.open(dataUri, "_blank");
     }
   };
 

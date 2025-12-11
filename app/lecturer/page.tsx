@@ -135,7 +135,7 @@ export default function LecturerPage() {
       headerRow.style.backgroundColor = "#f3f4f6";
       headerRow.style.borderBottom = "2px solid #d1d5db";
       
-      const headers = ["اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "القاعة", "الفترة"];
+      const headers = ["اسم المحاضر", "اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "القاعة", "الفترة"];
       headers.forEach(headerText => {
         const th = document.createElement("th");
         th.textContent = headerText;
@@ -160,6 +160,7 @@ export default function LecturerPage() {
         row.style.borderBottom = "1px solid #e5e7eb";
         
         const cells = [
+          exam.lecturerName || lecturerName,
           exam.courseName,
           exam.courseCode,
           exam.section,
@@ -324,7 +325,7 @@ export default function LecturerPage() {
       headerRow.style.backgroundColor = "#f3f4f6";
       headerRow.style.borderBottom = "2px solid #d1d5db";
       
-      const headers = ["اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "القاعة", "الفترة"];
+      const headers = ["اسم المحاضر", "اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "القاعة", "الفترة"];
       headers.forEach(headerText => {
         const th = document.createElement("th");
         th.textContent = headerText;
@@ -349,6 +350,7 @@ export default function LecturerPage() {
         row.style.borderBottom = "1px solid #e5e7eb";
         
         const cells = [
+          exam.lecturerName || lecturerName,
           exam.courseName,
           exam.courseCode,
           exam.section,
@@ -502,10 +504,11 @@ export default function LecturerPage() {
           // Default 2 hours duration
           const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
           
+          const lecturerNameText = exam.lecturerName || lecturerName;
           const summary = escapeText(`${exam.courseName} (${exam.courseCode}) - ${exam.section || ""}`.trim());
-          const descriptionParts = [];
-          if (exam.examPeriod) descriptionParts.push(exam.examPeriod);
-          if (exam.room) descriptionParts.push(exam.room);
+          const descriptionParts = [`المحاضر: ${lecturerNameText}`];
+          if (exam.examPeriod) descriptionParts.push(`الفترة: ${exam.examPeriod}`);
+          if (exam.room) descriptionParts.push(`القاعة: ${exam.room}`);
           if (exam.invigilator) {
             descriptionParts.push(`مراقب: ${exam.invigilator}`);
           }
@@ -522,6 +525,10 @@ DTEND:${formatICalDate(endDate)}
 SUMMARY:${summary}
 DESCRIPTION:${description}
 LOCATION:${location}
+STATUS:CONFIRMED
+SEQUENCE:0
+CREATED:${formatICalDate(new Date())}
+LAST-MODIFIED:${formatICalDate(new Date())}
 END:VEVENT`;
         } catch (err) {
           console.error("Error creating calendar event:", err, exam);
@@ -543,19 +550,59 @@ CALSCALE:GREGORIAN
 METHOD:PUBLISH
 X-WR-CALNAME:جدول امتحانات المحاضرين
 X-WR-TIMEZONE:Asia/Riyadh
+X-WR-CALDESC:جدول امتحانات المحاضرين
 ${icsContent}
 END:VCALENDAR`;
     
-    // Create blob with UTF-8 BOM for better compatibility
-    const BOM = "\uFEFF";
-    const blob = new Blob([BOM + ics], { type: "text/calendar;charset=utf-8" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `جدول_المحاضر_${lecturerName.replace(/\s+/g, "_")}.ics`;
-    link.click();
-    
-    // Clean up
-    setTimeout(() => URL.revokeObjectURL(link.href), 100);
+    try {
+      // Detect mobile devices
+      const isMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        // For mobile devices, create blob and use a more compatible approach
+        const blob = new Blob([ics], { type: "text/calendar" });
+        const url = URL.createObjectURL(blob);
+        
+        // Try to trigger download
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `جدول_المحاضر_${lecturerName.replace(/\s+/g, "_")}.ics`;
+        link.style.display = "none";
+        
+        // Add to DOM, click, then remove
+        document.body.appendChild(link);
+        
+        // For iOS, we need to use a different approach
+        if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+          // iOS doesn't support download attribute well, use window.open
+          window.open(url, "_blank");
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }, 100);
+        } else {
+          // For Android and other mobile browsers
+          link.click();
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }, 100);
+        }
+      } else {
+        // For desktop, use standard blob download
+        const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `جدول_المحاضر_${lecturerName.replace(/\s+/g, "_")}.ics`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 100);
+      }
+    } catch (err) {
+      console.error("Failed to export calendar:", err);
+      // Fallback: try data URI
+      const dataUri = `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
+      window.open(dataUri, "_blank");
+    }
   };
 
   // Show loading state while checking activation status
