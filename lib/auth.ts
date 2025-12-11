@@ -84,7 +84,17 @@ export async function getCurrentAdmin(): Promise<AdminInfo | null> {
       },
     });
 
-    return admin;
+    if (!admin) {
+      return null;
+    }
+
+    return {
+      id: admin.id,
+      username: admin.username,
+      name: admin.name || undefined,
+      isHeadAdmin: admin.isHeadAdmin,
+      canManageSettings: admin.canManageSettings || undefined,
+    };
   } catch (error) {
     console.error("Error getting current admin:", error);
     return null;
