@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Search, Calendar, Clock, MapPin, BookOpen, Loader2, Printer, FileText, Image as ImageIcon, Calendar as CalendarIcon, Grid3x3, Lock } from "lucide-react";
-import { formatHijriDate } from "@/lib/utils/hijri-converter";
+import { formatHijriDate, parseHijriDate } from "@/lib/utils/hijri-converter";
 import { safeJsonParse } from "@/lib/utils";
 import Image from "next/image";
 
@@ -122,26 +122,84 @@ export default function HomePage() {
     
     try {
       const canvas = await html2canvas(container as HTMLElement, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
-        backgroundColor: "#f9fafb",
+        backgroundColor: "#ffffff",
+        logging: false,
+        windowWidth: container.scrollWidth,
+        windowHeight: container.scrollHeight,
       });
-      const imgData = canvas.toDataURL("image/png");
+      
+      const imgData = canvas.toDataURL("image/png", 1.0);
       const pdf = new jsPDF("p", "mm", "a4");
-      const imgWidth = 210;
-      const pageHeight = 295;
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 10;
+      const contentWidth = pageWidth - (margin * 2);
+      const imgWidth = contentWidth;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      // Add header
+      pdf.setFillColor(59, 130, 246); // Blue color
+      pdf.rect(0, 0, pageWidth, 20, "F");
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(18);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("جدول الامتحانات", pageWidth / 2, 12, { align: "center" });
+      pdf.setFontSize(12);
+      pdf.text(`رقم الطالب: ${studentId}`, pageWidth / 2, 18, { align: "center" });
+      
+      // Reset text color
+      pdf.setTextColor(0, 0, 0);
+      
       let heightLeft = imgHeight;
-      let position = 0;
+      let position = 25; // Start after header
+      const maxContentHeight = pageHeight - 30; // Leave space for footer
       
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      // Add first page content
+      if (imgHeight <= maxContentHeight) {
+        pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight, undefined, "FAST");
+      } else {
+        // Split into multiple pages
+        let yOffset = 0;
+        let pageNumber = 1;
+        
+        while (heightLeft > 0) {
+          if (pageNumber > 1) {
+            pdf.addPage();
+            position = 0;
+          }
+          
+          const pageImgHeight = Math.min(heightLeft, maxContentHeight);
+          const sourceY = (yOffset / imgHeight) * canvas.height;
+          const sourceHeight = (pageImgHeight / imgHeight) * canvas.height;
+          
+          // Create a temporary canvas for this page slice
+          const pageCanvas = document.createElement("canvas");
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = sourceHeight;
+          const ctx = pageCanvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
+            const pageImgData = pageCanvas.toDataURL("image/png", 1.0);
+            pdf.addImage(pageImgData, "PNG", margin, position, imgWidth, pageImgHeight, undefined, "FAST");
+          }
+          
+          yOffset += pageImgHeight;
+          heightLeft -= pageImgHeight;
+          pageNumber++;
+        }
+      }
       
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      // Add footer to all pages
+      const totalPages = pdf.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(8);
+        pdf.setTextColor(128, 128, 128);
+        pdf.text(`صفحة ${i} من ${totalPages}`, pageWidth / 2, pageHeight - 5, { align: "center" });
+        const currentDate = new Date().toLocaleDateString("ar-SA");
+        pdf.text(`تاريخ الطباعة: ${currentDate}`, margin, pageHeight - 5);
       }
       
       pdf.save(`جدول_الامتحانات_${studentId}.pdf`);
@@ -157,14 +215,63 @@ export default function HomePage() {
     if (!container) return;
     
     try {
-      const canvas = await html2canvas(container as HTMLElement, {
-        scale: 2,
+      // Create a wrapper div for better export
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "20px";
+      wrapper.style.backgroundColor = "#ffffff";
+      wrapper.style.width = "800px";
+      wrapper.style.margin = "0 auto";
+      
+      // Add header
+      const header = document.createElement("div");
+      header.style.backgroundColor = "#3b82f6";
+      header.style.color = "#ffffff";
+      header.style.padding = "15px";
+      header.style.borderRadius = "8px 8px 0 0";
+      header.style.marginBottom = "20px";
+      header.style.textAlign = "center";
+      header.innerHTML = `
+        <h2 style="margin: 0; font-size: 24px; font-weight: bold;">جدول الامتحانات</h2>
+        <p style="margin: 5px 0 0 0; font-size: 16px;">رقم الطالب: ${studentId}</p>
+      `;
+      wrapper.appendChild(header);
+      
+      // Clone the container content
+      const clonedContainer = container.cloneNode(true) as HTMLElement;
+      clonedContainer.style.margin = "0";
+      wrapper.appendChild(clonedContainer);
+      
+      // Add footer
+      const footer = document.createElement("div");
+      footer.style.textAlign = "center";
+      footer.style.padding = "15px";
+      footer.style.color = "#6b7280";
+      footer.style.fontSize = "12px";
+      footer.style.borderTop = "1px solid #e5e7eb";
+      footer.style.marginTop = "20px";
+      footer.textContent = `تاريخ الطباعة: ${new Date().toLocaleDateString("ar-SA")}`;
+      wrapper.appendChild(footer);
+      
+      // Temporarily add to DOM
+      wrapper.style.position = "absolute";
+      wrapper.style.left = "-9999px";
+      document.body.appendChild(wrapper);
+      
+      const canvas = await html2canvas(wrapper, {
+        scale: 3,
         useCORS: true,
-        backgroundColor: "#f9fafb",
+        backgroundColor: "#ffffff",
+        logging: false,
+        width: wrapper.scrollWidth,
+        height: wrapper.scrollHeight,
       });
+      
+      // Remove wrapper from DOM
+      document.body.removeChild(wrapper);
+      
       const link = document.createElement("a");
       link.download = `جدول_الامتحانات_${studentId}.jpg`;
-      link.href = canvas.toDataURL("image/jpeg", 0.95);
+      link.href = canvas.toDataURL("image/jpeg", 0.98);
       link.click();
     } catch (err) {
       console.error("Failed to export JPG:", err);
@@ -172,40 +279,121 @@ export default function HomePage() {
   };
 
   const handleExportCalendar = () => {
+    // Helper function to escape special characters in iCal
+    const escapeText = (text: string): string => {
+      return text
+        .replace(/\\/g, "\\\\")
+        .replace(/;/g, "\\;")
+        .replace(/,/g, "\\,")
+        .replace(/\n/g, "\\n");
+    };
+    
+    // Helper function to convert date string to Gregorian Date
+    const parseDate = (dateStr: string): Date => {
+      // Check if it's Hijri date (year between 1200-1600)
+      const hijriMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (hijriMatch) {
+        const year = parseInt(hijriMatch[1], 10);
+        if (year >= 1200 && year < 1600) {
+          // It's a Hijri date, convert to Gregorian
+          const gregorianDateStr = parseHijriDate(dateStr);
+          if (gregorianDateStr) {
+            return new Date(gregorianDateStr);
+          }
+        }
+      }
+      // Try to parse as Gregorian date
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        // If parsing fails, try adding timezone
+        return new Date(dateStr + "T00:00:00");
+      }
+      return date;
+    };
+    
+    // Helper function to format date for iCal (UTC format)
+    const formatICalDate = (date: Date): string => {
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(date.getUTCDate()).padStart(2, "0");
+      const hours = String(date.getUTCHours()).padStart(2, "0");
+      const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+      const seconds = String(date.getUTCSeconds()).padStart(2, "0");
+      return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
+    };
+    
     const icsContent = schedules
       .map((schedule) => {
-        const startDate = new Date(`${schedule.examDate}T${schedule.startTime}`);
-        const endDate = schedule.endTime 
-          ? new Date(`${schedule.examDate}T${schedule.endTime}`)
-          : new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // Default 2 hours
-        
-        const formatDate = (date: Date) => {
-          return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
-        };
-        
-        return `BEGIN:VEVENT
-DTSTART:${formatDate(startDate)}
-DTEND:${formatDate(endDate)}
-SUMMARY:${schedule.courseName} (${schedule.courseCode})
-DESCRIPTION:${schedule.period} - ${schedule.place}
-LOCATION:${schedule.place}
+        try {
+          // Parse and convert date
+          const examDate = parseDate(schedule.examDate);
+          
+          // Parse time (format: HH:MM)
+          const [startHours, startMinutes] = schedule.startTime.split(":").map(Number);
+          const startDate = new Date(examDate);
+          startDate.setUTCHours(startHours || 0, startMinutes || 0, 0, 0);
+          
+          let endDate: Date;
+          if (schedule.endTime) {
+            const [endHours, endMinutes] = schedule.endTime.split(":").map(Number);
+            endDate = new Date(examDate);
+            endDate.setUTCHours(endHours || 0, endMinutes || 0, 0, 0);
+          } else {
+            // Default 2 hours duration
+            endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+          }
+          
+          // Ensure end date is after start date
+          if (endDate <= startDate) {
+            endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+          }
+          
+          const summary = escapeText(`${schedule.courseName} (${schedule.courseCode})`);
+          const description = escapeText(`${schedule.period} - ${schedule.place}`);
+          const location = escapeText(schedule.place);
+          
+          return `BEGIN:VEVENT
+UID:${Date.now()}-${Math.random().toString(36).substr(2, 9)}@exam-schedule
+DTSTAMP:${formatICalDate(new Date())}
+DTSTART:${formatICalDate(startDate)}
+DTEND:${formatICalDate(endDate)}
+SUMMARY:${summary}
+DESCRIPTION:${description}
+LOCATION:${location}
 END:VEVENT`;
+        } catch (err) {
+          console.error("Error creating calendar event:", err, schedule);
+          return "";
+        }
       })
+      .filter(event => event.length > 0)
       .join("\n");
+    
+    if (!icsContent) {
+      console.error("No valid events to export");
+      return;
+    }
     
     const ics = `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Exam Schedule//EN
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
+X-WR-CALNAME:جدول الامتحانات
+X-WR-TIMEZONE:Asia/Riyadh
 ${icsContent}
 END:VCALENDAR`;
     
-    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    // Create blob with UTF-8 BOM for better compatibility
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + ics], { type: "text/calendar;charset=utf-8" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `جدول_الامتحانات_${studentId}.ics`;
     link.click();
+    
+    // Clean up
+    setTimeout(() => URL.revokeObjectURL(link.href), 100);
   };
 
   // Show loading state while checking activation status
