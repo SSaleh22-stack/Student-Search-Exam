@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { checkAllScheduledActivations } from "@/lib/scheduled-activation";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    // Check for scheduled activations first
+    await checkAllScheduledActivations();
+
     // Get or create settings
     let settings = await prisma.settings.findUnique({
       where: { id: "settings" },

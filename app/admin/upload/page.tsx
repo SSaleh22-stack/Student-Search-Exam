@@ -460,32 +460,26 @@ export default function AdminUploadPage() {
       const body: any = {};
       
       if (type === "student") {
-        if ((scheduleStudentPage || (studentActivateDate && studentActivateTime)) && studentActivateDate && studentActivateTime) {
+        if (isActive !== undefined) {
+          // Immediate activation/deactivation - always clear scheduled activation
+          body.studentSearchActive = isActive;
+          body.studentActivateDate = null;
+          body.studentActivateTime = null;
+        } else if ((scheduleStudentPage || (studentActivateDate && studentActivateTime)) && studentActivateDate && studentActivateTime) {
           // Schedule activation
           body.studentActivateDate = studentActivateDate;
           body.studentActivateTime = studentActivateTime;
-        } else if (isActive !== undefined) {
-          // Immediate activation/deactivation
-          body.studentSearchActive = isActive;
-          // Clear scheduled activation if activating/deactivating immediately
-          if (isActive !== undefined) {
-            body.studentActivateDate = null;
-            body.studentActivateTime = null;
-          }
         }
       } else {
-        if ((scheduleLecturerPage || (lecturerActivateDate && lecturerActivateTime)) && lecturerActivateDate && lecturerActivateTime) {
+        if (isActive !== undefined) {
+          // Immediate activation/deactivation - always clear scheduled activation
+          body.lecturerSearchActive = isActive;
+          body.lecturerActivateDate = null;
+          body.lecturerActivateTime = null;
+        } else if ((scheduleLecturerPage || (lecturerActivateDate && lecturerActivateTime)) && lecturerActivateDate && lecturerActivateTime) {
           // Schedule activation
           body.lecturerActivateDate = lecturerActivateDate;
           body.lecturerActivateTime = lecturerActivateTime;
-        } else if (isActive !== undefined) {
-          // Immediate activation/deactivation
-          body.lecturerSearchActive = isActive;
-          // Clear scheduled activation if activating/deactivating immediately
-          if (isActive !== undefined) {
-            body.lecturerActivateDate = null;
-            body.lecturerActivateTime = null;
-          }
         }
       }
 
@@ -511,16 +505,20 @@ export default function AdminUploadPage() {
       // Update checkbox states based on scheduled activation
       if (data.studentActivateDate && data.studentActivateTime) {
         setScheduleStudentPage(true);
+      } else {
+        setScheduleStudentPage(false);
       }
       if (data.lecturerActivateDate && data.lecturerActivateTime) {
         setScheduleLecturerPage(true);
+      } else {
+        setScheduleLecturerPage(false);
       }
       
       // Show success message based on what was saved
       if (type === "student" && data.studentActivateDate && data.studentActivateTime) {
-        setSuccess(`تم جدولة تفعيل صفحة البحث للطلاب في ${data.studentActivateDate} الساعة ${data.studentActivateTime}`);
+        setSuccess(`تم جدولة التفعيل\nالتاريخ: ${data.studentActivateDate} | الوقت: ${data.studentActivateTime}`);
       } else if (type === "lecturer" && data.lecturerActivateDate && data.lecturerActivateTime) {
-        setSuccess(`تم جدولة تفعيل صفحة البحث للمحاضرين في ${data.lecturerActivateDate} الساعة ${data.lecturerActivateTime}`);
+        setSuccess(`تم جدولة التفعيل\nالتاريخ: ${data.lecturerActivateDate} | الوقت: ${data.lecturerActivateTime}`);
       } else if (isActive !== undefined) {
         setSuccess(`تم ${isActive ? "تفعيل" : "إلغاء تفعيل"} صفحة البحث ${type === "student" ? "للطلاب" : "للمحاضرين"} بنجاح`);
       }
@@ -2458,13 +2456,34 @@ No header mapping needed.`);
                       type="checkbox"
                       id="scheduleStudentPage"
                       checked={scheduleStudentPage || !!(studentActivateDate && studentActivateTime)}
-                      onChange={(e) => {
-                        setScheduleStudentPage(e.target.checked);
+                      onChange={async (e) => {
                         if (!e.target.checked) {
                           // If unchecking, clear scheduled activation
+                          setScheduleStudentPage(false);
                           setStudentActivateDate("");
                           setStudentActivateTime("");
-                          updateSearchSettings("student", false);
+                          // Clear scheduled activation from database
+                          try {
+                            const res = await fetch("/api/admin/settings", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                studentActivateDate: null,
+                                studentActivateTime: null,
+                              }),
+                            });
+                            const data = await safeJsonParse(res);
+                            if (res.ok) {
+                              setStudentActivateDate(data.studentActivateDate || "");
+                              setStudentActivateTime(data.studentActivateTime || "");
+                              setSuccess("تم إلغاء جدولة التفعيل");
+                              setTimeout(() => setSuccess(null), 3000);
+                            }
+                          } catch (err) {
+                            console.error("Error clearing scheduled activation:", err);
+                          }
+                        } else {
+                          setScheduleStudentPage(true);
                         }
                       }}
                       className="w-4 h-4 text-blue-600 rounded"
@@ -2554,13 +2573,34 @@ No header mapping needed.`);
                       type="checkbox"
                       id="scheduleLecturerPage"
                       checked={scheduleLecturerPage || !!(lecturerActivateDate && lecturerActivateTime)}
-                      onChange={(e) => {
-                        setScheduleLecturerPage(e.target.checked);
+                      onChange={async (e) => {
                         if (!e.target.checked) {
                           // If unchecking, clear scheduled activation
+                          setScheduleLecturerPage(false);
                           setLecturerActivateDate("");
                           setLecturerActivateTime("");
-                          updateSearchSettings("lecturer", false);
+                          // Clear scheduled activation from database
+                          try {
+                            const res = await fetch("/api/admin/settings", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                lecturerActivateDate: null,
+                                lecturerActivateTime: null,
+                              }),
+                            });
+                            const data = await safeJsonParse(res);
+                            if (res.ok) {
+                              setLecturerActivateDate(data.lecturerActivateDate || "");
+                              setLecturerActivateTime(data.lecturerActivateTime || "");
+                              setSuccess("تم إلغاء جدولة التفعيل");
+                              setTimeout(() => setSuccess(null), 3000);
+                            }
+                          } catch (err) {
+                            console.error("Error clearing scheduled activation:", err);
+                          }
+                        } else {
+                          setScheduleLecturerPage(true);
                         }
                       }}
                       className="w-4 h-4 text-purple-600 rounded"

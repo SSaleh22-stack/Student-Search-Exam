@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { checkAllScheduledActivations } from "@/lib/scheduled-activation";
 
 export async function GET(request: NextRequest) {
+  // Check for scheduled activations first
+  try {
+    await checkAllScheduledActivations();
+  } catch (error) {
+    console.error("Error checking scheduled activations:", error);
+    // Continue even if check fails
+  }
+
   // Check if lecturer search is active
   try {
     const settings = await prisma.settings.findUnique({

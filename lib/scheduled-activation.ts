@@ -24,9 +24,12 @@ export async function checkScheduledDatasetActivations() {
     for (const dataset of scheduledDatasets) {
       if (!dataset.activateDate || !dataset.activateTime) continue;
 
-      // Check if scheduled date/time has passed
-      const scheduledDateTime = new Date(`${dataset.activateDate}T${dataset.activateTime}`);
+      // Parse the scheduled date/time (assumes local timezone)
+      const [year, month, day] = dataset.activateDate.split('-').map(Number);
+      const [hours, minutes] = dataset.activateTime.split(':').map(Number);
+      const scheduledDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
       
+      // Check if scheduled date/time has passed
       if (now >= scheduledDateTime) {
         datasetsToActivate.push(dataset.id);
       }
@@ -91,10 +94,14 @@ export async function checkScheduledPageActivations() {
     let activated = 0;
 
     // Check student page activation
-    if (settings.studentActivateDate && settings.studentActivateTime && !settings.studentSearchActive) {
-      const scheduledDateTime = new Date(`${settings.studentActivateDate}T${settings.studentActivateTime}`);
+    if (settings.studentActivateDate && settings.studentActivateTime) {
+      // Parse the scheduled date/time (assumes local timezone)
+      const [year, month, day] = settings.studentActivateDate.split('-').map(Number);
+      const [hours, minutes] = settings.studentActivateTime.split(':').map(Number);
+      const scheduledDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
       
-      if (now >= scheduledDateTime) {
+      // Only activate if scheduled time has passed and page is not already active
+      if (now >= scheduledDateTime && !settings.studentSearchActive) {
         await prisma.settings.update({
           where: { id: "settings" },
           data: {
@@ -104,15 +111,29 @@ export async function checkScheduledPageActivations() {
           },
         });
         activated++;
-        console.log("Activated student search page");
+        console.log(`Activated student search page at ${now.toISOString()}, was scheduled for ${scheduledDateTime.toISOString()}`);
+      } else if (now >= scheduledDateTime && settings.studentSearchActive) {
+        // Scheduled time has passed but page is already active - clear the scheduled activation
+        await prisma.settings.update({
+          where: { id: "settings" },
+          data: {
+            studentActivateDate: null,
+            studentActivateTime: null,
+          },
+        });
+        console.log(`Cleared scheduled activation for student page (already active)`);
       }
     }
 
     // Check lecturer page activation
-    if (settings.lecturerActivateDate && settings.lecturerActivateTime && !settings.lecturerSearchActive) {
-      const scheduledDateTime = new Date(`${settings.lecturerActivateDate}T${settings.lecturerActivateTime}`);
+    if (settings.lecturerActivateDate && settings.lecturerActivateTime) {
+      // Parse the scheduled date/time (assumes local timezone)
+      const [year, month, day] = settings.lecturerActivateDate.split('-').map(Number);
+      const [hours, minutes] = settings.lecturerActivateTime.split(':').map(Number);
+      const scheduledDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
       
-      if (now >= scheduledDateTime) {
+      // Only activate if scheduled time has passed and page is not already active
+      if (now >= scheduledDateTime && !settings.lecturerSearchActive) {
         await prisma.settings.update({
           where: { id: "settings" },
           data: {
@@ -122,7 +143,17 @@ export async function checkScheduledPageActivations() {
           },
         });
         activated++;
-        console.log("Activated lecturer search page");
+        console.log(`Activated lecturer search page at ${now.toISOString()}, was scheduled for ${scheduledDateTime.toISOString()}`);
+      } else if (now >= scheduledDateTime && settings.lecturerSearchActive) {
+        // Scheduled time has passed but page is already active - clear the scheduled activation
+        await prisma.settings.update({
+          where: { id: "settings" },
+          data: {
+            lecturerActivateDate: null,
+            lecturerActivateTime: null,
+          },
+        });
+        console.log(`Cleared scheduled activation for lecturer page (already active)`);
       }
     }
 
