@@ -647,12 +647,11 @@ export default function AdminUploadPage() {
     
     // Simulate progress for reading headers
     let progressInterval: NodeJS.Timeout | null = null;
+    let currentProgress = 0;
     progressInterval = setInterval(() => {
-      setReadingProgress(prev => {
-        if (prev >= 90) return prev;
-        return prev + Math.random() * 15;
-      });
-    }, 200);
+      currentProgress = Math.min(currentProgress + Math.random() * 10 + 5, 90);
+      setReadingProgress(currentProgress);
+    }, 150);
     
     try {
       // For enrollment files, check if it's block-structured first
@@ -671,23 +670,39 @@ export default function AdminUploadPage() {
           const structureData = await safeJsonParse(structureRes);
           if (structureData.isBlockStructure) {
             // Block-structured file - no header mapping needed
-            setShowMapping(false);
-            setError(null);
-            setSuccess(`Block-structured file detected! The system will automatically extract:
+            if (progressInterval) {
+              clearInterval(progressInterval);
+            }
+            setReadingProgress(100);
+            setTimeout(() => {
+              setShowMapping(false);
+              setError(null);
+              setSuccess(`Block-structured file detected! The system will automatically extract:
 - Student IDs and names
 - Course codes
 - Class/Section numbers (الشعبة) from column 13
 No header mapping needed.`);
+              setReadingHeaders(false);
+              setReadingProgress(0);
+            }, 500);
             return;
           } else if (structureData.isSectionStructure) {
             // Section-structured file - no header mapping needed
-            setShowMapping(false);
-            setError(null);
-            setSuccess(`Course-section structured file detected! The system will automatically extract:
+            if (progressInterval) {
+              clearInterval(progressInterval);
+            }
+            setReadingProgress(100);
+            setTimeout(() => {
+              setShowMapping(false);
+              setError(null);
+              setSuccess(`Course-section structured file detected! The system will automatically extract:
 - Student IDs
 - Course codes (from "المقرر:" rows)
 - Section numbers (from "الشعبة:" rows)
 No header mapping needed.`);
+              setReadingHeaders(false);
+              setReadingProgress(0);
+            }, 500);
             return;
           }
         }
@@ -754,15 +769,22 @@ No header mapping needed.`);
         setEnrollMapping(autoMapping);
       }
       
-      setReadingProgress(100);
-      setShowMapping(true);
-    } catch (err) {
-      console.error("Error reading headers:", err);
-      setError("فشل قراءة عناوين Excel");
-    } finally {
       if (progressInterval) {
         clearInterval(progressInterval);
       }
+      setReadingProgress(100);
+      setShowMapping(true);
+      // Keep progress visible for a moment before hiding
+      setTimeout(() => {
+        setReadingHeaders(false);
+        setReadingProgress(0);
+      }, 500);
+    } catch (err) {
+      console.error("Error reading headers:", err);
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
+      setError("فشل قراءة عناوين Excel");
       setReadingHeaders(false);
       setReadingProgress(0);
     }
@@ -1159,6 +1181,39 @@ No header mapping needed.`);
     }
   };
 
+  // Function to get Arabic label for field names
+  const getFieldLabel = (field: string): string => {
+    const fieldLabels: Record<string, string> = {
+      // Exam fields
+      "course_code": "رمز المقرر",
+      "course_name": "اسم المقرر",
+      "class_no": "رقم الفصل",
+      "exam_date": "تاريخ الامتحان",
+      "start_time": "وقت البداية",
+      "end_time": "وقت النهاية",
+      "place": "المكان",
+      "period": "الفترة",
+      "rows": "الصفوف",
+      "seats": "المقاعد",
+      // Lecturer fields
+      "lecturer_name": "اسم المحاضر",
+      "section": "الشعبة",
+      "room": "القاعة",
+      "exam_period": "فترة الامتحان",
+      "period_start": "وقت البداية",
+      "role": "الدور",
+      "grade": "الدرجة",
+      "exam_code": "رمز الامتحان",
+      "number_of_students": "عدد الطلاب",
+      "column": "الأعمدة",
+      "day": "اليوم",
+      "invigilator": "المراقب",
+      // Enrollment fields
+      "student_id": "رقم الطالب",
+    };
+    return fieldLabels[field] || field.replace(/_/g, " ");
+  };
+
   const isProcessing = uploading || readingHeaders;
 
   return (
@@ -1509,8 +1564,8 @@ No header mapping needed.`);
                       <div className="space-y-2">
                         {["course_code", "course_name", "class_no", "exam_date", "start_time", "place", "period"].map((field) => (
                           <div key={field} className="flex items-center gap-2">
-                            <label className="text-xs text-gray-600 w-28 capitalize">
-                              {field.replace(/_/g, " ")}:
+                            <label className="text-xs text-gray-600 w-28">
+                              {getFieldLabel(field)}:
                             </label>
                             <select
                               value={examMapping[field] || ""}
@@ -1530,8 +1585,8 @@ No header mapping needed.`);
                         ))}
                         {/* end_time is optional */}
                         <div className="flex items-center gap-2">
-                          <label className="text-xs text-gray-600 w-28 capitalize">
-                            وقت الانتهاء (اختياري):
+                          <label className="text-xs text-gray-600 w-28">
+                            {getFieldLabel("end_time")} (اختياري):
                           </label>
                           <select
                             value={examMapping["end_time"] || ""}
@@ -1549,8 +1604,8 @@ No header mapping needed.`);
                         </div>
                         {["rows", "seats"].map((field) => (
                           <div key={field} className="flex items-center gap-2">
-                            <label className="text-xs text-gray-600 w-28 capitalize">
-                              {field === "rows" ? "الصفوف" : "المقاعد"} (اختياري):
+                            <label className="text-xs text-gray-600 w-28">
+                              {getFieldLabel(field)} (اختياري):
                             </label>
                             <select
                               value={examMapping[field] || ""}
@@ -1593,8 +1648,8 @@ No header mapping needed.`);
                       <div className="space-y-2">
                         {["lecturer_name", "section", "course_code", "course_name", "room", "exam_date", "exam_period", "period_start"].map((field) => (
                           <div key={field} className="flex items-center gap-2">
-                            <label className="text-xs text-gray-600 w-28 capitalize">
-                              {field.replace(/_/g, " ")}:
+                            <label className="text-xs text-gray-600 w-28">
+                              {getFieldLabel(field)}:
                             </label>
                             <select
                               value={lecturerMapping[field] || ""}
@@ -1614,8 +1669,8 @@ No header mapping needed.`);
                         ))}
                         {["role", "grade", "exam_code", "number_of_students", "column", "day", "invigilator"].map((field) => (
                           <div key={field} className="flex items-center gap-2">
-                            <label className="text-xs text-gray-600 w-28 capitalize">
-                              {field.replace(/_/g, " ")} (اختياري):
+                            <label className="text-xs text-gray-600 w-28">
+                              {getFieldLabel(field)} (اختياري):
                             </label>
                             <select
                               value={lecturerMapping[field] || ""}
@@ -1659,8 +1714,8 @@ No header mapping needed.`);
                       <div className="space-y-2">
                         {["student_id", "course_code", "class_no"].map((field) => (
                           <div key={field} className="flex items-center gap-2">
-                            <label className="text-xs text-gray-600 w-28 capitalize">
-                              {field.replace(/_/g, " ")}:
+                            <label className="text-xs text-gray-600 w-28">
+                              {getFieldLabel(field)}:
                             </label>
                             <select
                               value={enrollMapping[field] || ""}
