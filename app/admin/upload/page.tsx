@@ -127,6 +127,8 @@ export default function AdminUploadPage() {
   const [lecturerActivateTime, setLecturerActivateTime] = useState("");
   const [scheduleStudentPage, setScheduleStudentPage] = useState(false);
   const [scheduleLecturerPage, setScheduleLecturerPage] = useState(false);
+  const [currentLocalTime, setCurrentLocalTime] = useState("");
+  const [currentLocalDate, setCurrentLocalDate] = useState("");
   
   // Dataset selection
   const [selectedDatasets, setSelectedDatasets] = useState<Set<string>>(new Set());
@@ -213,6 +215,20 @@ export default function AdminUploadPage() {
     loadDatasets();
     loadSettings();
     loadCurrentAdmin();
+    
+    // Update current local time every second
+    const updateLocalTime = () => {
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`; // HH:MM
+      setCurrentLocalDate(dateStr);
+      setCurrentLocalTime(timeStr);
+    };
+    
+    updateLocalTime();
+    const interval = setInterval(updateLocalTime, 1000);
+    
+    return () => clearInterval(interval);
   }, [checkAuth, loadCurrentAdmin]);
 
   // Close tooltip when clicking outside
@@ -239,24 +255,12 @@ export default function AdminUploadPage() {
   useEffect(() => {
     const INACTIVITY_TIMEOUT = 45 * 60 * 1000; // 45 minutes in milliseconds
     let inactivityTimer: NodeJS.Timeout | null = null;
-    let warningTimer: NodeJS.Timeout | null = null;
-    const WARNING_TIME = 2 * 60 * 1000; // Show warning 2 minutes before logout
 
     const resetTimer = () => {
-      // Clear existing timers
+      // Clear existing timer
       if (inactivityTimer) {
         clearTimeout(inactivityTimer);
       }
-      if (warningTimer) {
-        clearTimeout(warningTimer);
-      }
-
-      // Set warning timer (2 minutes before logout)
-      warningTimer = setTimeout(() => {
-        if (confirm(`سيتم تسجيل الخروج تلقائياً بعد دقيقتين من عدم النشاط. هل تريد البقاء متصلاً؟`)) {
-          resetTimer(); // Reset timer if user wants to stay
-        }
-      }, INACTIVITY_TIMEOUT - WARNING_TIME);
 
       // Set logout timer
       inactivityTimer = setTimeout(async () => {
@@ -295,9 +299,6 @@ export default function AdminUploadPage() {
       });
       if (inactivityTimer) {
         clearTimeout(inactivityTimer);
-      }
-      if (warningTimer) {
-        clearTimeout(warningTimer);
       }
     };
   }, [handleLogout]);
@@ -2493,25 +2494,42 @@ No header mapping needed.`);
                     </label>
                   </div>
                   {(scheduleStudentPage || (studentActivateDate && studentActivateTime)) && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">التاريخ (YYYY-MM-DD)</label>
-                        <input
-                          type="date"
-                          value={studentActivateDate}
-                          onChange={(e) => setStudentActivateDate(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        />
+                    <div className="space-y-3">
+                      <div className="bg-blue-50 border border-blue-200 rounded-md p-2 text-xs text-blue-800">
+                        <p className="font-medium">الوقت المحلي الحالي:</p>
+                        <p>التاريخ: {currentLocalDate} | الوقت: {currentLocalTime}</p>
+                        <p className="text-blue-600 mt-1">المنطقة الزمنية: {Intl.DateTimeFormat().resolvedOptions().timeZone}</p>
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">الوقت (HH:MM)</label>
-                        <input
-                          type="time"
-                          value={studentActivateTime}
-                          onChange={(e) => setStudentActivateTime(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">التاريخ (YYYY-MM-DD)</label>
+                          <input
+                            type="date"
+                            value={studentActivateDate}
+                            onChange={(e) => setStudentActivateDate(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">الوقت (HH:MM)</label>
+                          <input
+                            type="time"
+                            value={studentActivateTime}
+                            onChange={(e) => setStudentActivateTime(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                          />
+                        </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStudentActivateDate(currentLocalDate);
+                          setStudentActivateTime(currentLocalTime);
+                        }}
+                        className="w-full px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-xs font-medium"
+                      >
+                        استخدام الوقت الحالي
+                      </button>
                     </div>
                   )}
                   {(scheduleStudentPage || (studentActivateDate && studentActivateTime)) && studentActivateDate && studentActivateTime && (
@@ -2610,25 +2628,42 @@ No header mapping needed.`);
                     </label>
                   </div>
                   {(scheduleLecturerPage || (lecturerActivateDate && lecturerActivateTime)) && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">التاريخ (YYYY-MM-DD)</label>
-                        <input
-                          type="date"
-                          value={lecturerActivateDate}
-                          onChange={(e) => setLecturerActivateDate(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        />
+                    <div className="space-y-3">
+                      <div className="bg-purple-50 border border-purple-200 rounded-md p-2 text-xs text-purple-800">
+                        <p className="font-medium">الوقت المحلي الحالي:</p>
+                        <p>التاريخ: {currentLocalDate} | الوقت: {currentLocalTime}</p>
+                        <p className="text-purple-600 mt-1">المنطقة الزمنية: {Intl.DateTimeFormat().resolvedOptions().timeZone}</p>
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">الوقت (HH:MM)</label>
-                        <input
-                          type="time"
-                          value={lecturerActivateTime}
-                          onChange={(e) => setLecturerActivateTime(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">التاريخ (YYYY-MM-DD)</label>
+                          <input
+                            type="date"
+                            value={lecturerActivateDate}
+                            onChange={(e) => setLecturerActivateDate(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">الوقت (HH:MM)</label>
+                          <input
+                            type="time"
+                            value={lecturerActivateTime}
+                            onChange={(e) => setLecturerActivateTime(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                          />
+                        </div>
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLecturerActivateDate(currentLocalDate);
+                          setLecturerActivateTime(currentLocalTime);
+                        }}
+                        className="w-full px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-xs font-medium"
+                      >
+                        استخدام الوقت الحالي
+                      </button>
                     </div>
                   )}
                   {(scheduleLecturerPage || (lecturerActivateDate && lecturerActivateTime)) && lecturerActivateDate && lecturerActivateTime && (
