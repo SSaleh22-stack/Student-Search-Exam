@@ -182,14 +182,6 @@ export default function HomePage() {
           <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
             أدخل رقم الطالب لعرض جدول الامتحانات
           </p>
-          <div className="flex justify-center gap-4">
-            <a
-              href="/lecturer"
-              className="text-sm text-purple-600 hover:text-purple-800 underline"
-            >
-              هل أنت محاضر؟ اضغط هنا للبحث بالاسم
-            </a>
-          </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6 sm:mb-8 no-print">

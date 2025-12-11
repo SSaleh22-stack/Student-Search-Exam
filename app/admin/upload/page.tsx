@@ -156,6 +156,78 @@ export default function AdminUploadPage() {
     loadCurrentAdmin();
   }, [checkAuth]);
 
+  const handleLogout = useCallback(async () => {
+    await fetch("/api/admin/logout", { method: "POST" });
+    router.push("/admin");
+  }, [router]);
+
+  // Auto-logout after 45 minutes of inactivity
+  useEffect(() => {
+    const INACTIVITY_TIMEOUT = 45 * 60 * 1000; // 45 minutes in milliseconds
+    let inactivityTimer: NodeJS.Timeout | null = null;
+    let warningTimer: NodeJS.Timeout | null = null;
+    const WARNING_TIME = 2 * 60 * 1000; // Show warning 2 minutes before logout
+
+    const resetTimer = () => {
+      // Clear existing timers
+      if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+      }
+      if (warningTimer) {
+        clearTimeout(warningTimer);
+      }
+
+      // Set warning timer (2 minutes before logout)
+      warningTimer = setTimeout(() => {
+        if (confirm(`سيتم تسجيل الخروج تلقائياً بعد دقيقتين من عدم النشاط. هل تريد البقاء متصلاً؟`)) {
+          resetTimer(); // Reset timer if user wants to stay
+        }
+      }, INACTIVITY_TIMEOUT - WARNING_TIME);
+
+      // Set logout timer
+      inactivityTimer = setTimeout(async () => {
+        await handleLogout();
+      }, INACTIVITY_TIMEOUT);
+    };
+
+    // Track user activity events
+    // Use throttling for mousemove to avoid excessive calls
+    let lastActivityTime = Date.now();
+    const THROTTLE_TIME = 1000; // Only reset timer once per second for mousemove
+    
+    const handleActivity = (event?: Event) => {
+      const now = Date.now();
+      // Throttle mousemove events
+      if (event?.type === 'mousemove' && (now - lastActivityTime) < THROTTLE_TIME) {
+        return;
+      }
+      lastActivityTime = now;
+      resetTimer();
+    };
+
+    // Add event listeners
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    activityEvents.forEach(eventType => {
+      window.addEventListener(eventType, handleActivity, { passive: true });
+    });
+
+    // Initialize timer
+    resetTimer();
+
+    // Cleanup on unmount
+    return () => {
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, handleActivity);
+      });
+      if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+      }
+      if (warningTimer) {
+        clearTimeout(warningTimer);
+      }
+    };
+  }, [handleLogout]);
+
   const loadCurrentAdmin = async () => {
     try {
       const res = await fetch("/api/admin/check");
@@ -367,11 +439,6 @@ export default function AdminUploadPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleLogout = async () => {
-    await fetch("/api/admin/logout", { method: "POST" });
-    router.push("/admin");
   };
 
   const handleToggleSelection = (datasetId: string) => {

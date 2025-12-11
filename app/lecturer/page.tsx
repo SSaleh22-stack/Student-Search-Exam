@@ -163,14 +163,6 @@ export default function LecturerPage() {
           <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
             أدخل اسمك لعرض جدول الامتحانات
           </p>
-          <div className="flex justify-center gap-4">
-            <a
-              href="/"
-              className="text-sm text-blue-600 hover:text-blue-800 underline"
-            >
-              بحث الطلاب
-            </a>
-          </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6 sm:mb-8 no-print">
