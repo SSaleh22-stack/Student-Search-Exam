@@ -42,7 +42,7 @@ export default function HomePage() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentId.trim()) {
-      setError("الرجاء إدخال رقم الطالب");
+      setError("الرجاء إدخال الرقم الجامعي");
       return;
     }
 
@@ -151,7 +151,7 @@ export default function HomePage() {
       header.style.textAlign = "center";
       header.innerHTML = `
         <h1 style="margin: 0; font-size: 42px; font-weight: bold; margin-bottom: 10px;">جدول الامتحانات</h1>
-        <p style="margin: 0; font-size: 24px;">رقم الطالب: ${studentId}</p>
+        <p style="margin: 0; font-size: 24px;">الرقم الجامعي: ${studentId}</p>
       `;
       wrapper.appendChild(header);
       
@@ -341,7 +341,7 @@ export default function HomePage() {
       header.style.textAlign = "center";
       header.innerHTML = `
         <h1 style="margin: 0; font-size: 46px; font-weight: bold; margin-bottom: 10px;">جدول الامتحانات</h1>
-        <p style="margin: 0; font-size: 26px;">رقم الطالب: ${studentId}</p>
+        <p style="margin: 0; font-size: 26px;">الرقم الجامعي: ${studentId}</p>
       `;
       wrapper.appendChild(header);
       
@@ -743,11 +743,18 @@ END:VCALENDAR`;
               </div>
             </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            البحث عن جدول الامتحانات
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-3">
+            <Image 
+              src="/img/Qassim_University_logo.png" 
+              alt="Qassim University Logo" 
+              width={40}
+              height={40}
+              className="h-8 sm:h-10 md:h-12 w-auto"
+            />
+            <span>البحث عن جدول الامتحانات</span>
           </h1>
           <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
-            أدخل رقم الطالب لعرض جدول الامتحانات
+            أدخل الرقم الجامعي لعرض جدول الامتحانات
           </p>
         </div>
 
@@ -758,7 +765,7 @@ END:VCALENDAR`;
                 htmlFor="studentId"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                رقم الطالب
+                الرقم الجامعي
               </label>
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
@@ -766,7 +773,7 @@ END:VCALENDAR`;
                   type="text"
                   value={studentId}
                   onChange={(e) => setStudentId(e.target.value)}
-                  placeholder="أدخل رقم الطالب"
+                  placeholder="أدخل الرقم الجامعي"
                   className="flex-1 px-3 sm:px-4 py-2.5 sm:py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={loading}
                 />
@@ -916,7 +923,7 @@ END:VCALENDAR`;
         {!loading && schedules.length === 0 && !error && (
           <div className="text-center py-12 text-gray-500">
             <BookOpen className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <p>أدخل رقم الطالب أعلاه لعرض جدول الامتحانات</p>
+            <p>أدخل الرقم الجامعي أعلاه لعرض جدول الامتحانات</p>
           </div>
         )}
       </div>
