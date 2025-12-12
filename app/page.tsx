@@ -743,15 +743,8 @@ END:VCALENDAR`;
               </div>
             </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-3">
-            <Image 
-              src="/img/Qassim_University_logo.png" 
-              alt="Qassim University Logo" 
-              width={40}
-              height={40}
-              className="h-8 sm:h-10 md:h-12 w-auto"
-            />
-            <span>البحث عن جدول الامتحانات</span>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+            البحث عن جدول الامتحانات
           </h1>
           <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
             أدخل الرقم الجامعي لعرض جدول الامتحانات

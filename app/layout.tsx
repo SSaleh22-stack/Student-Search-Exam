@@ -6,7 +6,10 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "البحث عن جدول الامتحانات",
-  description: "ابحث عن جدول امتحاناتك باستخدام رقم الطالب",
+  description: "ابحث عن جدول امتحاناتك باستخدام الرقم الجامعي",
+  icons: {
+    icon: "/img/Qassim_University_logo.png",
+  },
 };
 
 export default function RootLayout({
