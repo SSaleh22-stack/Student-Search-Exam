@@ -7,6 +7,7 @@ import { parseEnrollmentsFromBlocks } from "@/lib/excel/parseEnrollBlocks";
 import { parseEnrollmentsFromSections } from "@/lib/excel/parseEnrollSections";
 import { detectFileStructure } from "@/lib/excel/detectStructure";
 import { parseLecturerSchedule } from "@/lib/excel/parseLecturer";
+import { parseStudentRegistration } from "@/lib/excel/parseStudentRegistration";
 
 export const dynamic = 'force-dynamic';
 
@@ -37,9 +38,11 @@ export async function POST(request: NextRequest) {
     const examFiles = formData.getAll("examFiles") as File[];
     const enrollFiles = formData.getAll("enrollFiles") as File[];
     const lecturerFiles = formData.getAll("lecturerFiles") as File[];
+    const registrationFiles = formData.getAll("registrationFiles") as File[];
+    const enrollmentFileType = formData.get("enrollmentFileType") as string | null;
     
     let totalSize = 0;
-    for (const file of [...examFiles, ...enrollFiles, ...lecturerFiles]) {
+    for (const file of [...examFiles, ...enrollFiles, ...lecturerFiles, ...registrationFiles]) {
       if (file.size > MAX_FILE_SIZE) {
         return NextResponse.json(
           { 
@@ -78,11 +81,26 @@ export async function POST(request: NextRequest) {
     }
 
     if (uploadType === "student") {
-      if (!examFiles || examFiles.length === 0 || !enrollFiles || enrollFiles.length === 0) {
+      if (!examFiles || examFiles.length === 0) {
         return NextResponse.json(
-          { error: "Missing required fields. Please provide at least one exam file and one enrollment file." },
+          { error: "Missing required fields. Please provide at least one exam file." },
           { status: 400 }
         );
+      }
+      if (enrollmentFileType === "registration") {
+        if (!registrationFiles || registrationFiles.length === 0) {
+          return NextResponse.json(
+            { error: "Missing required fields. Please provide at least one registration file." },
+            { status: 400 }
+          );
+        }
+      } else {
+        if (!enrollFiles || enrollFiles.length === 0) {
+          return NextResponse.json(
+            { error: "Missing required fields. Please provide at least one enrollment file." },
+            { status: 400 }
+          );
+        }
       }
     } else if (uploadType === "lecturer") {
       if (!lecturerFiles || lecturerFiles.length === 0) {
@@ -129,25 +147,55 @@ export async function POST(request: NextRequest) {
     let fileType = "table";
 
     if (uploadType === "student") {
-      // Process exam and enrollment files in parallel for faster processing
-      console.log(`[Upload] Processing ${examFiles.length} exam file(s) and ${enrollFiles.length} enrollment file(s) in parallel`);
+      // Process exam files
+      console.log(`[Upload] Processing ${examFiles.length} exam file(s)`);
       
-      const [examResults, enrollResults] = await Promise.all([
-        // Process all exam files in parallel
-        Promise.all(
-          examFiles.map(async (examFile, i) => {
+      const examResults = await Promise.all(
+        examFiles.map(async (examFile, i) => {
+          try {
+            const result = await parseExamSchedule(examFile, examMapping);
+            console.log(`[Upload] Exam file ${i + 1}/${examFiles.length}: ${result.validRows.length} valid rows`);
+            return result;
+          } catch (err) {
+            console.error(`[Upload] Error parsing exam file ${i + 1}:`, err);
+            throw new Error(`Failed to parse exam schedule file ${i + 1}: ${examFile.name}`);
+          }
+        })
+      );
+
+      // Process enrollment files based on type
+      let enrollResults;
+      if (enrollmentFileType === "registration") {
+        // Process registration files (student registration table format)
+        console.log(`[Upload] Processing ${registrationFiles.length} registration file(s)`);
+        enrollResults = await Promise.all(
+          registrationFiles.map(async (registrationFile, i) => {
             try {
-              const result = await parseExamSchedule(examFile, examMapping);
-              console.log(`[Upload] Exam file ${i + 1}/${examFiles.length}: ${result.validRows.length} valid rows`);
-              return result;
+              const result = await parseStudentRegistration(registrationFile);
+              
+              // Convert student registration format to enrollment format
+              const enrollmentRows = result.validRows.map(row => ({
+                studentId: row.studentId,
+                courseCode: row.courseCode,
+                classNo: row.classNo,
+              }));
+              
+              console.log(`[Upload] Registration file ${i + 1}/${registrationFiles.length} (${registrationFile.name}): ${enrollmentRows.length} enrollments`);
+              return {
+                validRows: enrollmentRows,
+                errors: result.errors,
+              };
             } catch (err) {
-              console.error(`[Upload] Error parsing exam file ${i + 1}:`, err);
-              throw new Error(`Failed to parse exam schedule file ${i + 1}: ${examFile.name}`);
+              console.error(`[Upload] Error processing registration file ${i + 1}:`, err);
+              throw err instanceof Error ? err : new Error(`Failed to process registration file ${i + 1}: ${registrationFile.name}`);
             }
           })
-        ),
-        // Process all enrollment files in parallel
-        Promise.all(
+        );
+        fileType = "student-registration";
+      } else {
+        // Process uploaded enrollment files
+        console.log(`[Upload] Processing ${enrollFiles.length} enrollment file(s) in parallel`);
+        enrollResults = await Promise.all(
           enrollFiles.map(async (enrollFile, i) => {
             try {
               // Detect file structure
@@ -177,8 +225,8 @@ export async function POST(request: NextRequest) {
               throw err instanceof Error ? err : new Error(`Failed to process enrollment file ${i + 1}: ${enrollFile.name}`);
             }
           })
-        ),
-      ]);
+        );
+      }
 
       // Combine exam results
       const allExamRows: any[] = [];

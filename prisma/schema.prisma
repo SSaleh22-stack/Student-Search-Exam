@@ -16,9 +16,6 @@ model Dataset {
   createdAt    DateTime @default(now())
   isActive     Boolean  @default(false)
   type         String?  @default("student") // "student" or "lecturer"
-  activateDate String?  // Scheduled activation date in YYYY-MM-DD format
-  activateTime String?  // Scheduled activation time in HH:MM format
-  activateTimezoneOffset Int? // Timezone offset in minutes (e.g., 180 for UTC+3)
   
   courseExams  CourseExam[]
   enrollments  Enrollment[]

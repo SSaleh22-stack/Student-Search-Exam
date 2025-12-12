@@ -10,13 +10,14 @@ interface ExamSchedule {
   courseName: string;
   courseCode: string;
   classNo: string;
-  examDate: string;
-  startTime: string;
-  endTime: string;
-  place: string;
-  period: string;
-  rows?: string; // Row range like "1-8", "1-9", "4-6"
-  seats?: number;
+  examDate: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  place: string | null;
+  period: string | null;
+  rows?: string | null; // Row range like "1-8", "1-9", "4-6"
+  seats?: number | null;
+  hasInfo?: boolean; // Whether exam information is available
 }
 
 export default function HomePage() {
@@ -69,10 +70,10 @@ export default function HomePage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
     try {
       if (!dateString || !dateString.trim()) {
-        return dateString;
+        return "لا توجد معلومات";
       }
       
       // Data comes from database as-is (already in correct format - Hijri or Gregorian)
@@ -170,7 +171,7 @@ export default function HomePage() {
       headerRow.style.backgroundColor = "#f3f4f6";
       headerRow.style.borderBottom = "2px solid #d1d5db";
       
-      const headers = ["اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "المكان", "الفترة"];
+      const headers = ["اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "المكان"];
       headers.forEach(headerText => {
         const th = document.createElement("th");
         th.textContent = headerText;
@@ -199,9 +200,10 @@ export default function HomePage() {
           schedule.courseCode,
           schedule.classNo,
           formatDate(schedule.examDate),
-          `${schedule.startTime}${schedule.endTime ? ` - ${schedule.endTime}` : ""}`,
-          schedule.place,
-          schedule.period
+          schedule.startTime && schedule.endTime 
+            ? `${schedule.startTime} - ${schedule.endTime}`
+            : schedule.startTime || schedule.endTime || "لا توجد معلومات",
+          schedule.place || "لا توجد معلومات",
         ];
         
         cells.forEach((cellText, cellIndex) => {
@@ -359,7 +361,7 @@ export default function HomePage() {
       headerRow.style.backgroundColor = "#f3f4f6";
       headerRow.style.borderBottom = "2px solid #d1d5db";
       
-      const headers = ["اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "المكان", "الفترة"];
+      const headers = ["اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "المكان"];
       headers.forEach(headerText => {
         const th = document.createElement("th");
         th.textContent = headerText;
@@ -388,9 +390,10 @@ export default function HomePage() {
           schedule.courseCode,
           schedule.classNo,
           formatDate(schedule.examDate),
-          `${schedule.startTime}${schedule.endTime ? ` - ${schedule.endTime}` : ""}`,
-          schedule.place,
-          schedule.period
+          schedule.startTime && schedule.endTime 
+            ? `${schedule.startTime} - ${schedule.endTime}`
+            : schedule.startTime || schedule.endTime || "لا توجد معلومات",
+          schedule.place || "لا توجد معلومات",
         ];
         
         cells.forEach((cellText, cellIndex) => {
@@ -543,6 +546,11 @@ export default function HomePage() {
     const icsContent = schedules
       .map((schedule, index) => {
         try {
+          // Skip courses without exam information
+          if (!schedule.hasInfo || !schedule.examDate) {
+            return "";
+          }
+          
           // Parse and convert date
           const examDate = parseDate(schedule.examDate);
           if (!examDate || isNaN(examDate.getTime())) {
@@ -585,7 +593,7 @@ export default function HomePage() {
           }
           
           const summary = escapeText(`${schedule.courseName} (${schedule.courseCode})`);
-          const description = escapeText(`${schedule.period || ""} - ${schedule.place || ""}`.trim());
+          const description = escapeText(`${schedule.place || ""}`.trim());
           const location = escapeText(schedule.place || "");
           
           const uid = `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}@exam-schedule`;
@@ -847,9 +855,11 @@ END:VCALENDAR`;
                       {schedule.courseCode} • <span className="text-base sm:text-lg font-semibold">الشعبة {schedule.classNo}</span>
                     </p>
                   </div>
-                  <span className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-800 text-xs sm:text-sm font-medium rounded-full whitespace-nowrap">
-                    {schedule.period}
-                  </span>
+                  {!schedule.hasInfo && (
+                    <span className="px-2 sm:px-3 py-1 bg-amber-100 text-amber-800 text-xs sm:text-sm font-medium rounded-full whitespace-nowrap">
+                      لا توجد معلومات
+                    </span>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -862,13 +872,15 @@ END:VCALENDAR`;
                     <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
                     <span className="text-xs sm:text-sm text-gray-500">الوقت:</span>
                     <span className="font-medium">
-                      {schedule.startTime} - {schedule.endTime}
+                      {schedule.startTime && schedule.endTime 
+                        ? `${schedule.startTime} - ${schedule.endTime}`
+                        : schedule.startTime || schedule.endTime || "لا توجد معلومات"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base sm:col-span-2">
                     <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
                     <span className="text-xs sm:text-sm text-gray-500">المكان:</span>
-                    <span className="font-medium break-words">{schedule.place}</span>
+                    <span className="font-medium break-words">{schedule.place || "لا توجد معلومات"}</span>
                   </div>
                   {schedule.rows && (
                     <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base sm:col-span-2">
