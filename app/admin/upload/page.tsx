@@ -1093,7 +1093,7 @@ No header mapping needed.`);
         return;
       }
       if (enrollmentFileType === "registration" && registrationFiles.length === 0) {
-        setError("يرجى اختيار ملف واحد على الأقل من نوع جدول تسجيلات الطلاب");
+        setError("يرجى اختيار ملف واحد على الأقل من نوع ملفات جداول الطلاب");
         return;
       }
       
@@ -1752,7 +1752,7 @@ No header mapping needed.`);
                               className="w-4 h-4 text-blue-600"
                               disabled={uploading || readingHeaders}
                             />
-                            <span className="text-sm text-gray-700">ملفات تسجيلات الطلاب (Excel) - بالتسجيل حسب الأقسام</span>
+                            <span className="text-sm text-gray-700">ملفات شعب الطلاب (Excel) - بالتسجيل حسب الشعبة</span>
                           </label>
                           <label className="flex items-center gap-2 cursor-pointer">
                             <input
@@ -1771,7 +1771,7 @@ No header mapping needed.`);
                               className="w-4 h-4 text-blue-600"
                               disabled={uploading || readingHeaders}
                             />
-                            <span className="text-sm text-gray-700">جدول تسجيلات الطلاب (Student Registration Table) - كل طالب مع مقرراته</span>
+                            <span className="text-sm text-gray-700">ملفات جداول الطلاب (Excel) - بالتسجيل حسب جدول الطالب</span>
                           </label>
                         </div>
                         
