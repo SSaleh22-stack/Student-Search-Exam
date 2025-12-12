@@ -5,10 +5,10 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "البحث عن جدول الامتحانات",
+  title: "Qu Exams",
   description: "ابحث عن جدول امتحاناتك باستخدام الرقم الجامعي",
   icons: {
-    icon: "/img/Qassim_University_logo.png",
+    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>",
   },
 };
 
