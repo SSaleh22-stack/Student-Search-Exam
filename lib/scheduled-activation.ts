@@ -52,14 +52,22 @@ export async function checkScheduledDatasetActivations() {
         select: { type: true },
       });
 
-      const types = [...new Set(datasetsToUpdate.map(d => d.type).filter(Boolean))];
+      const types = [...new Set(datasetsToUpdate.map(d => d.type))];
 
       for (const type of types) {
+        // Build where clause conditionally based on whether type is null or not
+        const whereClause: any = {
+          id: { notIn: datasetsToActivate },
+        };
+        
+        if (type === null || type === undefined || type === "") {
+          whereClause.type = null;
+        } else {
+          whereClause.type = type;
+        }
+        
         await prisma.dataset.updateMany({
-          where: {
-            type: type || null,
-            id: { notIn: datasetsToActivate },
-          },
+          where: whereClause,
           data: { isActive: false },
         });
       }

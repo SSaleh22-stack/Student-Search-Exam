@@ -6,7 +6,11 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "البحث عن جدول الامتحانات للطلاب في مقر الجامعة بمحافظة الرس",
-  description: "ابحث عن جدول امتحاناتك باستخدام رقم الطالب",
+  description: "البحث عن جدول الامتحانات في مقر الجامعة بمحافظة الرس",
+  openGraph: {
+    title: "البحث عن جدول الامتحانات في مقر الجامعة بمحافظة الرس",
+    description: "البحث عن جدول الامتحانات في مقر الجامعة بمحافظة الرس",
+  },
 };
 
 export default function RootLayout({
