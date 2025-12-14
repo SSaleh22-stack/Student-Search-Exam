@@ -20,10 +20,6 @@ export const metadata: Metadata = {
   metadataBase: new URL(getBaseUrl()),
   title: "امتحانات مقر جامعة القصيم في الرس",
   description: "البحث عن جدول الامتحانات في مقر الجامعة بمحافظة الرس",
-  icons: {
-    icon: "/img/Qassim_University_logo.png",
-    apple: "/img/Qassim_University_logo.png",
-  },
   openGraph: {
     title: "امتحانات مقر جامعة القصيم في الرس",
     description: "البحث عن جدول الامتحانات في مقر الجامعة بمحافظة الرس",
