@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const lecturerName = searchParams.get("lecturerName");
+    const exactMatch = searchParams.get("exactMatch") === "true";
 
     if (!lecturerName || !lecturerName.trim()) {
       return NextResponse.json(
@@ -67,17 +68,6 @@ export async function GET(request: NextRequest) {
     }
 
     const datasetIds = activeDatasets.map(d => d.id);
-
-    // Find exams for this lecturer (case-insensitive search with flexible matching)
-    // Split search query into words and match all words (in any order)
-    const searchWords = lecturerName.trim().toLowerCase().split(/\s+/).filter(w => w.length > 0);
-    
-    if (searchWords.length === 0) {
-      return NextResponse.json(
-        { error: "Lecturer name is required" },
-        { status: 400 }
-      );
-    }
     
     const allExams = await prisma.lecturerExam.findMany({
       where: {
@@ -85,12 +75,45 @@ export async function GET(request: NextRequest) {
       },
     });
     
-    // Filter: all search words must appear in the lecturer name (in any order)
-    const exams = allExams.filter(exam => {
-      const examNameLower = exam.lecturerName.toLowerCase();
-      // Check if all search words are present in the lecturer name
-      return searchWords.every(word => examNameLower.includes(word));
-    }).sort((a, b) => {
+    // Filter exams based on search mode
+    let exams;
+    if (exactMatch) {
+      // Exact match: match the exact lecturer name (case-insensitive)
+      const searchNameLower = lecturerName.trim().toLowerCase();
+      exams = allExams.filter(exam => 
+        exam.lecturerName.toLowerCase() === searchNameLower
+      );
+    } else {
+      // Flexible match: all search words must appear in the lecturer name (in any order)
+      const searchWords = lecturerName.trim().toLowerCase().split(/\s+/).filter(w => w.length > 0);
+      
+      if (searchWords.length === 0) {
+        return NextResponse.json(
+          { error: "Lecturer name is required" },
+          { status: 400 }
+        );
+      }
+      
+      exams = allExams.filter(exam => {
+        const examNameLower = exam.lecturerName.toLowerCase();
+        // Check if all search words are present in the lecturer name
+        return searchWords.every(word => examNameLower.includes(word));
+      });
+    }
+
+    // Get unique lecturer names
+    const uniqueLecturerNames = Array.from(new Set(exams.map(exam => exam.lecturerName)));
+
+    // If multiple unique lecturer names found, return them for selection
+    if (uniqueLecturerNames.length > 1) {
+      return NextResponse.json({ 
+        lecturerNames: uniqueLecturerNames.sort(),
+        multipleMatches: true 
+      });
+    }
+
+    // If only one or zero matches, proceed with exams
+    const sortedExams = exams.sort((a, b) => {
       // Sort by date then time
       if (a.examDate !== b.examDate) {
         return a.examDate.localeCompare(b.examDate);
@@ -99,7 +122,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Format response
-    const formattedExams = exams.map((exam) => ({
+    const formattedExams = sortedExams.map((exam) => ({
       lecturerName: exam.lecturerName,
       role: exam.role,
       grade: exam.grade,

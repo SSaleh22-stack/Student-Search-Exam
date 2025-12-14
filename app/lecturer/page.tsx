@@ -30,6 +30,8 @@ export default function LecturerPage() {
   const [exams, setExams] = useState<LecturerExam[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isActive, setIsActive] = useState<boolean | null>(null);
+  const [availableLecturers, setAvailableLecturers] = useState<string[]>([]);
+  const [showLecturerSelection, setShowLecturerSelection] = useState(false);
 
   useEffect(() => {
     // Check if lecturer search is active
@@ -53,9 +55,46 @@ export default function LecturerPage() {
     setLoading(true);
     setError(null);
     setExams([]);
+    setAvailableLecturers([]);
+    setShowLecturerSelection(false);
 
     try {
       const response = await fetch(`/api/lecturer/schedule?lecturerName=${encodeURIComponent(lecturerName.trim())}`);
+      const data = await safeJsonParse(response);
+
+      if (!response.ok) {
+        throw new Error(data.error || "فشل في جلب الجدول");
+      }
+
+      // Check if multiple lecturer names were found
+      if (data.multipleMatches && data.lecturerNames) {
+        setAvailableLecturers(data.lecturerNames);
+        setShowLecturerSelection(true);
+      } else if (data.exams) {
+        setExams(data.exams);
+        if (data.exams.length === 0) {
+          setError("لم يتم العثور على جدول امتحانات لهذا الاسم");
+        }
+      } else {
+        setError("لم يتم العثور على جدول امتحانات لهذا الاسم");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "حدث خطأ");
+      setExams([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLecturerSelect = async (selectedName: string) => {
+    setLoading(true);
+    setError(null);
+    setExams([]);
+    setShowLecturerSelection(false);
+    setLecturerName(selectedName);
+
+    try {
+      const response = await fetch(`/api/lecturer/schedule?lecturerName=${encodeURIComponent(selectedName)}&exactMatch=true`);
       const data = await safeJsonParse(response);
 
       if (!response.ok) {
@@ -126,7 +165,7 @@ export default function LecturerPage() {
       header.style.padding = "30px";
       header.style.textAlign = "center";
       header.innerHTML = `
-        <h1 style="margin: 0; font-size: 42px; font-weight: bold; margin-bottom: 10px;">جدول امتحانات المحاضرين</h1>
+        <h1 style="margin: 0; font-size: 42px; font-weight: bold; margin-bottom: 10px;">جدول امتحانات المحاضرين في مقر الجامعة بمحافظة الرس</h1>
         <p style="margin: 0; font-size: 24px;">اسم المحاضر: ${lecturerName}</p>
       `;
       wrapper.appendChild(header);
@@ -316,7 +355,7 @@ export default function LecturerPage() {
       header.style.padding = "30px";
       header.style.textAlign = "center";
       header.innerHTML = `
-        <h1 style="margin: 0; font-size: 46px; font-weight: bold; margin-bottom: 10px;">جدول امتحانات المحاضرين</h1>
+        <h1 style="margin: 0; font-size: 46px; font-weight: bold; margin-bottom: 10px;">جدول امتحانات المحاضرين في مقر الجامعة بمحافظة الرس</h1>
         <p style="margin: 0; font-size: 26px;">اسم المحاضر: ${lecturerName}</p>
       `;
       wrapper.appendChild(header);
@@ -560,9 +599,9 @@ VERSION:2.0
 PRODID:-//Exam Schedule//EN
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
-X-WR-CALNAME:جدول امتحانات المحاضرين
+X-WR-CALNAME:جدول امتحانات المحاضرين في مقر الجامعة بمحافظة الرس
 X-WR-TIMEZONE:Asia/Riyadh
-X-WR-CALDESC:جدول امتحانات المحاضرين
+X-WR-CALDESC:جدول امتحانات المحاضرين في مقر الجامعة بمحافظة الرس
 ${icsContent}
 END:VCALENDAR`;
     
@@ -674,11 +713,16 @@ END:VCALENDAR`;
             </div>
           </div>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            جدول امتحانات المحاضرين
+            جدول امتحانات المحاضرين في مقر الجامعة بمحافظة الرس
           </h1>
           <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
             أدخل اسمك لعرض جدول الامتحانات
           </p>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+            <p className="text-sm sm:text-base text-amber-800 text-center font-medium">
+              في حال وجود بيانات غير صحيحة آمل التواصل عبر الواتس (0163012312)
+            </p>
+          </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6 sm:mb-8 no-print">
@@ -725,6 +769,26 @@ END:VCALENDAR`;
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4">
             {error}
+          </div>
+        )}
+
+        {showLecturerSelection && availableLecturers.length > 0 && (
+          <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6 sm:mb-8">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
+              تم العثور على عدة محاضرين بهذا الاسم. الرجاء اختيار المحاضر:
+            </h2>
+            <div className="space-y-2">
+              {availableLecturers.map((name, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleLecturerSelect(name)}
+                  disabled={loading}
+                  className="w-full text-right px-4 py-3 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-md text-gray-900 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

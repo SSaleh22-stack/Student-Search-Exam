@@ -5,11 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Qu Exams",
-  description: "ابحث عن جدول امتحاناتك باستخدام الرقم الجامعي",
-  icons: {
-    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>",
-  },
+  title: "البحث عن جدول الامتحانات للطلاب في مقر الجامعة بمحافظة الرس",
+  description: "ابحث عن جدول امتحاناتك باستخدام رقم الطالب",
 };
 
 export default function RootLayout({

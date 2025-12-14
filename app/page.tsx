@@ -10,14 +10,13 @@ interface ExamSchedule {
   courseName: string;
   courseCode: string;
   classNo: string;
-  examDate: string | null;
-  startTime: string | null;
-  endTime: string | null;
-  place: string | null;
-  period: string | null;
-  rows?: string | null; // Row range like "1-8", "1-9", "4-6"
-  seats?: number | null;
-  hasInfo?: boolean; // Whether exam information is available
+  examDate: string;
+  startTime: string;
+  endTime: string;
+  place: string;
+  period: string;
+  rows?: string; // Row range like "1-8", "1-9", "4-6"
+  seats?: number;
 }
 
 export default function HomePage() {
@@ -42,7 +41,7 @@ export default function HomePage() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentId.trim()) {
-      setError("الرجاء إدخال الرقم الجامعي");
+      setError("الرجاء إدخال رقم الطالب");
       return;
     }
 
@@ -70,10 +69,10 @@ export default function HomePage() {
     }
   };
 
-  const formatDate = (dateString: string | null) => {
+  const formatDate = (dateString: string) => {
     try {
       if (!dateString || !dateString.trim()) {
-        return "لا توجد معلومات";
+        return dateString;
       }
       
       // Data comes from database as-is (already in correct format - Hijri or Gregorian)
@@ -151,7 +150,7 @@ export default function HomePage() {
       header.style.textAlign = "center";
       header.innerHTML = `
         <h1 style="margin: 0; font-size: 42px; font-weight: bold; margin-bottom: 10px;">جدول الامتحانات</h1>
-        <p style="margin: 0; font-size: 24px;">الرقم الجامعي: ${studentId}</p>
+        <p style="margin: 0; font-size: 24px;">رقم الطالب: ${studentId}</p>
       `;
       wrapper.appendChild(header);
       
@@ -171,7 +170,7 @@ export default function HomePage() {
       headerRow.style.backgroundColor = "#f3f4f6";
       headerRow.style.borderBottom = "2px solid #d1d5db";
       
-      const headers = ["اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "المكان"];
+      const headers = ["اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "المكان", "الفترة"];
       headers.forEach(headerText => {
         const th = document.createElement("th");
         th.textContent = headerText;
@@ -200,10 +199,9 @@ export default function HomePage() {
           schedule.courseCode,
           schedule.classNo,
           formatDate(schedule.examDate),
-          schedule.startTime && schedule.endTime 
-            ? `${schedule.startTime} - ${schedule.endTime}`
-            : schedule.startTime || schedule.endTime || "لا توجد معلومات",
-          schedule.place || "لا توجد معلومات",
+          `${schedule.startTime}${schedule.endTime ? ` - ${schedule.endTime}` : ""}`,
+          schedule.place,
+          schedule.period
         ];
         
         cells.forEach((cellText, cellIndex) => {
@@ -341,7 +339,7 @@ export default function HomePage() {
       header.style.textAlign = "center";
       header.innerHTML = `
         <h1 style="margin: 0; font-size: 46px; font-weight: bold; margin-bottom: 10px;">جدول الامتحانات</h1>
-        <p style="margin: 0; font-size: 26px;">الرقم الجامعي: ${studentId}</p>
+        <p style="margin: 0; font-size: 26px;">رقم الطالب: ${studentId}</p>
       `;
       wrapper.appendChild(header);
       
@@ -361,7 +359,7 @@ export default function HomePage() {
       headerRow.style.backgroundColor = "#f3f4f6";
       headerRow.style.borderBottom = "2px solid #d1d5db";
       
-      const headers = ["اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "المكان"];
+      const headers = ["اسم المقرر", "رمز المقرر", "الشعبة", "التاريخ", "الوقت", "المكان", "الفترة"];
       headers.forEach(headerText => {
         const th = document.createElement("th");
         th.textContent = headerText;
@@ -390,10 +388,9 @@ export default function HomePage() {
           schedule.courseCode,
           schedule.classNo,
           formatDate(schedule.examDate),
-          schedule.startTime && schedule.endTime 
-            ? `${schedule.startTime} - ${schedule.endTime}`
-            : schedule.startTime || schedule.endTime || "لا توجد معلومات",
-          schedule.place || "لا توجد معلومات",
+          `${schedule.startTime}${schedule.endTime ? ` - ${schedule.endTime}` : ""}`,
+          schedule.place,
+          schedule.period
         ];
         
         cells.forEach((cellText, cellIndex) => {
@@ -546,11 +543,6 @@ export default function HomePage() {
     const icsContent = schedules
       .map((schedule, index) => {
         try {
-          // Skip courses without exam information
-          if (!schedule.hasInfo || !schedule.examDate) {
-            return "";
-          }
-          
           // Parse and convert date
           const examDate = parseDate(schedule.examDate);
           if (!examDate || isNaN(examDate.getTime())) {
@@ -593,7 +585,7 @@ export default function HomePage() {
           }
           
           const summary = escapeText(`${schedule.courseName} (${schedule.courseCode})`);
-          const description = escapeText(`${schedule.place || ""}`.trim());
+          const description = escapeText(`${schedule.period || ""} - ${schedule.place || ""}`.trim());
           const location = escapeText(schedule.place || "");
           
           const uid = `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}@exam-schedule`;
@@ -744,11 +736,16 @@ END:VCALENDAR`;
             </div>
           </div>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            البحث عن جدول الامتحانات
+            البحث عن جدول الامتحانات للطلاب في مقر الجامعة بمحافظة الرس
           </h1>
           <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
-            أدخل الرقم الجامعي لعرض جدول الامتحانات
+            أدخل رقم الطالب لعرض جدول الامتحانات
           </p>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+            <p className="text-sm sm:text-base text-amber-800 text-center font-medium">
+              في حال وجود بيانات غير صحيحة آمل التواصل عبر الإيميل (rctv2@qu.edu.sa)
+            </p>
+          </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-6 sm:mb-8 no-print">
@@ -758,7 +755,7 @@ END:VCALENDAR`;
                 htmlFor="studentId"
                 className="block text-sm font-medium text-gray-700 mb-2"
               >
-                الرقم الجامعي
+                رقم الطالب
               </label>
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
@@ -766,7 +763,7 @@ END:VCALENDAR`;
                   type="text"
                   value={studentId}
                   onChange={(e) => setStudentId(e.target.value)}
-                  placeholder="أدخل الرقم الجامعي"
+                  placeholder="أدخل رقم الطالب"
                   className="flex-1 px-3 sm:px-4 py-2.5 sm:py-2 text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   disabled={loading}
                 />
@@ -855,11 +852,9 @@ END:VCALENDAR`;
                       {schedule.courseCode} • <span className="text-base sm:text-lg font-semibold">الشعبة {schedule.classNo}</span>
                     </p>
                   </div>
-                  {!schedule.hasInfo && (
-                    <span className="px-2 sm:px-3 py-1 bg-amber-100 text-amber-800 text-xs sm:text-sm font-medium rounded-full whitespace-nowrap">
-                      لا توجد معلومات
-                    </span>
-                  )}
+                  <span className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-800 text-xs sm:text-sm font-medium rounded-full whitespace-nowrap">
+                    {schedule.period}
+                  </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -872,15 +867,13 @@ END:VCALENDAR`;
                     <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
                     <span className="text-xs sm:text-sm text-gray-500">الوقت:</span>
                     <span className="font-medium">
-                      {schedule.startTime && schedule.endTime 
-                        ? `${schedule.startTime} - ${schedule.endTime}`
-                        : schedule.startTime || schedule.endTime || "لا توجد معلومات"}
+                      {schedule.startTime} - {schedule.endTime}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base sm:col-span-2">
                     <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
                     <span className="text-xs sm:text-sm text-gray-500">المكان:</span>
-                    <span className="font-medium break-words">{schedule.place || "لا توجد معلومات"}</span>
+                    <span className="font-medium break-words">{schedule.place}</span>
                   </div>
                   {schedule.rows && (
                     <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base sm:col-span-2">
@@ -916,7 +909,7 @@ END:VCALENDAR`;
         {!loading && schedules.length === 0 && !error && (
           <div className="text-center py-12 text-gray-500">
             <BookOpen className="w-16 h-16 mx-auto mb-4 opacity-50" />
-            <p>أدخل الرقم الجامعي أعلاه لعرض جدول الامتحانات</p>
+            <p>أدخل رقم الطالب أعلاه لعرض جدول الامتحانات</p>
           </div>
         )}
       </div>

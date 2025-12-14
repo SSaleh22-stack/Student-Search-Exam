@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { datasetId } = await request.json();
+    const { datasetId, activateDate, activateTime, timezoneOffset } = await request.json();
 
     if (!datasetId) {
       return NextResponse.json(
@@ -44,15 +44,102 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Toggle activation - allow multiple datasets to be active
+    // If activateDate and activateTime are provided, schedule activation
+    // Otherwise, activate immediately
+    if (activateDate && activateTime) {
+      // Validate date format (YYYY-MM-DD)
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(activateDate)) {
+        return NextResponse.json(
+          { error: "Invalid date format. Use YYYY-MM-DD" },
+          { status: 400 }
+        );
+      }
+      
+      // Validate time format (HH:MM)
+      if (!/^\d{2}:\d{2}$/.test(activateTime)) {
+        return NextResponse.json(
+          { error: "Invalid time format. Use HH:MM" },
+          { status: 400 }
+        );
+      }
+
+      // Check if scheduled time is in the past
+      const scheduledDateTime = new Date(`${activateDate}T${activateTime}`);
+      const now = new Date();
+      
+      if (now >= scheduledDateTime) {
+        // Scheduled time has already passed, activate immediately
+        // First deactivate other datasets of the same type
+        if (dataset.type) {
+          await prisma.dataset.updateMany({
+            where: {
+              type: dataset.type,
+              id: { not: datasetId },
+            },
+            data: { isActive: false },
+          });
+        } else {
+          await prisma.dataset.updateMany({
+            where: {
+              type: null,
+              id: { not: datasetId },
+            },
+            data: { isActive: false },
+          });
+        }
+        
+        await prisma.dataset.update({
+          where: { id: datasetId },
+          data: { 
+            isActive: true,
+            activateDate: null,
+            activateTime: null,
+          },
+        });
+      } else {
+        // Schedule activation - store date and time, but don't activate yet
     await prisma.dataset.update({
       where: { id: datasetId },
-      data: { 
-        isActive: !dataset.isActive,
-      },
+          data: { 
+            activateDate,
+            activateTime,
+            isActive: false, // Will be activated at scheduled time
+          },
+        });
+      }
+    } else {
+      // Activate immediately - clear any scheduled activation
+      // First deactivate other datasets of the same type
+      if (dataset.type) {
+        await prisma.dataset.updateMany({
+          where: {
+            type: dataset.type,
+            id: { not: datasetId },
+          },
+          data: { isActive: false },
+        });
+      } else {
+        await prisma.dataset.updateMany({
+          where: {
+            type: null,
+            id: { not: datasetId },
+          },
+          data: { isActive: false },
+        });
+      }
+      
+        await prisma.dataset.update({
+          where: { id: datasetId },
+          data: { 
+            isActive: !dataset.isActive,
+            activateDate: null,
+            activateTime: null,
+            activateTimezoneOffset: null,
+          },
     });
+    }
 
-    // Check for scheduled page activations
+    // Check for any other scheduled activations that might be due
     await checkAllScheduledActivations();
 
     return NextResponse.json({ success: true });

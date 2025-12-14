@@ -23,6 +23,8 @@ export async function GET() {
         createdAt: true,
         isActive: true,
         type: true,
+        activateDate: true,
+        activateTime: true,
       },
     });
 

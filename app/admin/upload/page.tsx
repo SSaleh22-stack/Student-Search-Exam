@@ -12,6 +12,8 @@ interface Dataset {
   createdAt: string;
   isActive: boolean;
   type?: string;
+  activateDate?: string | null;
+  activateTime?: string | null;
 }
 
 interface HeaderMapping {
@@ -94,8 +96,6 @@ export default function AdminUploadPage() {
   const [examFiles, setExamFiles] = useState<File[]>([]);
   const [enrollFiles, setEnrollFiles] = useState<File[]>([]);
   const [lecturerFiles, setLecturerFiles] = useState<File[]>([]);
-  const [enrollmentFileType, setEnrollmentFileType] = useState<"excel" | "registration">("excel");
-  const [registrationFiles, setRegistrationFiles] = useState<File[]>([]);
   
   // Header mapping states
   const [examHeaders, setExamHeaders] = useState<string[]>([]);
@@ -135,6 +135,11 @@ export default function AdminUploadPage() {
   // Dataset selection
   const [selectedDatasets, setSelectedDatasets] = useState<Set<string>>(new Set());
   
+  // Scheduled activation modal
+  const [showActivateModal, setShowActivateModal] = useState(false);
+  const [activateDate, setActivateDate] = useState("");
+  const [activateTime, setActivateTime] = useState("");
+  const [scheduleActivation, setScheduleActivation] = useState(false);
   
   // Permission tooltip state
   const [showTooltip, setShowTooltip] = useState<string | null>(null);
@@ -592,15 +597,54 @@ export default function AdminUploadPage() {
       return;
     }
 
+    // Show modal to choose immediate or scheduled activation
+    setShowActivateModal(true);
+    setScheduleActivation(false);
+    setActivateDate("");
+    setActivateTime("");
+  };
+
+  const confirmActivate = async () => {
     setLoading(true);
     setError(null);
     try {
+      const activateData: any = {};
+      
+      // If scheduling, validate and include date/time
+      if (scheduleActivation) {
+        if (!activateDate || !activateTime) {
+          setError("يرجى إدخال التاريخ والوقت للتفعيل المجدول");
+          setLoading(false);
+          return;
+        }
+        
+        // Validate date format
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(activateDate)) {
+          setError("تنسيق التاريخ غير صحيح. استخدم YYYY-MM-DD");
+          setLoading(false);
+          return;
+        }
+        
+        // Validate time format
+        if (!/^\d{2}:\d{2}$/.test(activateTime)) {
+          setError("تنسيق الوقت غير صحيح. استخدم HH:MM");
+          setLoading(false);
+          return;
+        }
+        
+        activateData.activateDate = activateDate;
+        activateData.activateTime = activateTime;
+      }
+
       const results = await Promise.allSettled(
         Array.from(selectedDatasets).map(datasetId =>
           fetch("/api/admin/activate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ datasetId }),
+            body: JSON.stringify({ 
+              datasetId,
+              ...activateData
+            }),
           }).then(async (res) => {
             if (!res.ok) {
               const errorData = await res.json().catch(() => ({}));
@@ -622,8 +666,17 @@ export default function AdminUploadPage() {
         throw new Error(`فشل تفعيل ${failed.length} مجموعة بيانات: ${errorMessages.join(", ")}`);
       }
 
+      if (scheduleActivation) {
+        setSuccess(`تم جدولة تفعيل ${selectedDatasets.size} مجموعة بيانات في ${activateDate} الساعة ${activateTime}`);
+      } else {
       setSuccess(`تم تفعيل ${selectedDatasets.size} مجموعة بيانات بنجاح`);
+      }
+      
       setSelectedDatasets(new Set());
+      setShowActivateModal(false);
+      setScheduleActivation(false);
+      setActivateDate("");
+      setActivateTime("");
       await loadDatasets();
       setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
@@ -1084,16 +1137,8 @@ No header mapping needed.`);
     const MAX_TOTAL_SIZE = 20 * 1024 * 1024; // 20MB total
     
     if (uploadType === "student") {
-      if (examFiles.length === 0 || !datasetName.trim()) {
-        setError("يرجى توفير ملف امتحان واحد على الأقل واسم مجموعة البيانات");
-        return;
-      }
-      if (enrollmentFileType === "excel" && enrollFiles.length === 0) {
-        setError("يرجى توفير ملف تسجيل واحد على الأقل");
-        return;
-      }
-      if (enrollmentFileType === "registration" && registrationFiles.length === 0) {
-        setError("يرجى اختيار ملف واحد على الأقل من نوع ملفات جداول الطلاب");
+      if (examFiles.length === 0 || enrollFiles.length === 0 || !datasetName.trim()) {
+        setError("يرجى توفير ملف امتحان واحد على الأقل وملف تسجيل واحد واسم مجموعة البيانات");
         return;
       }
       
@@ -1106,22 +1151,12 @@ No header mapping needed.`);
         }
         totalSize += file.size;
       }
-      if (enrollmentFileType === "excel") {
-        for (const file of enrollFiles) {
-          if (file.size > MAX_FILE_SIZE) {
-            setError(`الملف "${file.name}" كبير جداً (${(file.size / 1024 / 1024).toFixed(2)} ميجابايت). الحد الأقصى لحجم الملف هو 10 ميجابايت. يرجى تقسيم الملف إلى أجزاء أصغر.`);
-            return;
-          }
-          totalSize += file.size;
+      for (const file of enrollFiles) {
+        if (file.size > MAX_FILE_SIZE) {
+          setError(`الملف "${file.name}" كبير جداً (${(file.size / 1024 / 1024).toFixed(2)} ميجابايت). الحد الأقصى لحجم الملف هو 10 ميجابايت. يرجى تقسيم الملف إلى أجزاء أصغر.`);
+          return;
         }
-      } else {
-        for (const file of registrationFiles) {
-          if (file.size > MAX_FILE_SIZE) {
-            setError(`الملف "${file.name}" كبير جداً (${(file.size / 1024 / 1024).toFixed(2)} ميجابايت). الحد الأقصى لحجم الملف هو 10 ميجابايت. يرجى تقسيم الملف إلى أجزاء أصغر.`);
-            return;
-          }
-          totalSize += file.size;
-        }
+        totalSize += file.size;
       }
       if (totalSize > MAX_TOTAL_SIZE) {
         setError(`إجمالي حجم الملفات (${(totalSize / 1024 / 1024).toFixed(2)} ميجابايت) يتجاوز الحد الأقصى البالغ 20 ميجابايت. يرجى رفع ملفات أقل أو أصغر.`);
@@ -1148,10 +1183,10 @@ No header mapping needed.`);
       }
     }
 
-    // Check if enrollment files are block-structured or section-structured (only for student upload with Excel files)
+    // Check if enrollment files are block-structured or section-structured (only for student upload)
     let isBlockStructured = false;
     let isSectionStructured = false;
-    if (uploadType === "student" && enrollmentFileType === "excel" && enrollFiles.length > 0) {
+    if (uploadType === "student" && enrollFiles.length > 0) {
       try {
         const checkFormData = new FormData();
         checkFormData.append("file", enrollFiles[0]); // Check first file
@@ -1170,10 +1205,10 @@ No header mapping needed.`);
       }
     }
     
-      // Validate mappings based on upload type
+    // Validate mappings based on upload type
     if (uploadType === "student") {
       const examRequired = ["course_code", "course_name", "class_no", "exam_date", "start_time", "place", "period"];
-      const enrollRequired = (enrollmentFileType === "registration" || isBlockStructured || isSectionStructured) ? [] : ["student_id", "course_code", "class_no"];
+      const enrollRequired = (isBlockStructured || isSectionStructured) ? [] : ["student_id", "course_code", "class_no"];
       
       const missingExam = examRequired.filter(f => !examMapping[f]);
       const missingEnroll = enrollRequired.filter(f => !enrollMapping[f]);
@@ -1208,24 +1243,15 @@ No header mapping needed.`);
         examFiles.forEach((file) => {
           formData.append("examFiles", file);
         });
-        // Append enrollment files or registration files based on selection
-        if (enrollmentFileType === "excel") {
-          enrollFiles.forEach((file) => {
-            formData.append("enrollFiles", file);
-          });
-          formData.append("enrollmentFileType", "excel");
-          // Only send enrollment mapping if not block-structured
-          if (!isBlockStructured && !isSectionStructured) {
-            formData.append("enrollMapping", JSON.stringify(enrollMapping));
-          }
-        } else {
-          // Send registration files
-          registrationFiles.forEach((file) => {
-            formData.append("registrationFiles", file);
-          });
-          formData.append("enrollmentFileType", "registration");
-        }
+        // Append all enrollment files
+        enrollFiles.forEach((file) => {
+          formData.append("enrollFiles", file);
+        });
         formData.append("examMapping", JSON.stringify(examMapping));
+        // Only send enrollment mapping if not block-structured
+        if (!isBlockStructured && !isSectionStructured) {
+          formData.append("enrollMapping", JSON.stringify(enrollMapping));
+        }
       } else if (uploadType === "lecturer") {
         // Append all lecturer files
         lecturerFiles.forEach((file) => {
@@ -1731,102 +1757,28 @@ No header mapping needed.`);
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          ملفات تسجيلات الطلاب
+                        <label htmlFor="enrollFile" className="block text-sm font-medium text-gray-700 mb-2">
+                          ملفات تسجيلات الطلاب (Excel) - يُسمح بملفات متعددة
                         </label>
-                        <div className="mb-3 space-y-2">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="enrollmentFileType"
-                              value="excel"
-                              checked={enrollmentFileType === "excel"}
-                              onChange={(e) => {
-                                setEnrollmentFileType("excel");
-                                setEnrollFiles([]);
-                                setRegistrationFiles([]);
-                                setEnrollHeaders([]);
-                                setEnrollMapping({});
-                                setShowMapping(false);
-                              }}
-                              className="w-4 h-4 text-blue-600"
-                              disabled={uploading || readingHeaders}
-                            />
-                            <span className="text-sm text-gray-700">ملفات شعب الطلاب (Excel) - بالتسجيل حسب الشعبة</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="enrollmentFileType"
-                              value="registration"
-                              checked={enrollmentFileType === "registration"}
-                              onChange={(e) => {
-                                setEnrollmentFileType("registration");
-                                setEnrollFiles([]);
-                                setRegistrationFiles([]);
-                                setEnrollHeaders([]);
-                                setEnrollMapping({});
-                                setShowMapping(false);
-                              }}
-                              className="w-4 h-4 text-blue-600"
-                              disabled={uploading || readingHeaders}
-                            />
-                            <span className="text-sm text-gray-700">ملفات جداول الطلاب (Excel) - بالتسجيل حسب جدول الطالب</span>
-                          </label>
-                        </div>
-                        
-                        {enrollmentFileType === "excel" ? (
-                          <>
-                            <input
-                              id="enrollFile"
-                              type="file"
-                              accept=".xlsx,.xls"
-                              multiple
-                              onChange={handleEnrollFileChange}
-                              required
-                              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                              disabled={uploading || readingHeaders}
-                            />
-                            {enrollFiles.length > 0 && (
-                              <div className="mt-2 text-sm text-gray-600">
-                                <span className="font-medium">تم اختيار {enrollFiles.length} ملف:</span>
-                                <ul className="list-disc list-inside mt-1">
-                                  {enrollFiles.map((file, idx) => (
-                                    <li key={idx}>{file.name}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <input
-                              id="registrationFile"
-                              type="file"
-                              accept=".xlsx,.xls"
-                              multiple
-                              onChange={(e) => {
-                                const files = Array.from(e.target.files || []);
-                                setRegistrationFiles(files);
-                              }}
-                              required
-                              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                              disabled={uploading || readingHeaders}
-                            />
-                            {registrationFiles.length > 0 && (
-                              <div className="mt-2 text-sm text-gray-600">
-                                <span className="font-medium">تم اختيار {registrationFiles.length} ملف:</span>
-                                <ul className="list-disc list-inside mt-1">
-                                  {registrationFiles.map((file, idx) => (
-                                    <li key={idx}>{file.name}</li>
-                                  ))}
-                                </ul>
-                                <p className="mt-1 text-xs text-gray-500">
-                                  سيتم استخراج: رقم الطالب، رمز المقرر، اسم المقرر، رقم الشعبة
-                                </p>
-                              </div>
-                            )}
-                          </>
+                        <input
+                          id="enrollFile"
+                          type="file"
+                          accept=".xlsx,.xls"
+                          multiple
+                          onChange={handleEnrollFileChange}
+                          required
+                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          disabled={uploading || readingHeaders}
+                        />
+                        {enrollFiles.length > 0 && (
+                          <div className="mt-2 text-sm text-gray-600">
+                            <span className="font-medium">تم اختيار {enrollFiles.length} ملف:</span>
+                            <ul className="list-disc list-inside mt-1">
+                              {enrollFiles.map((file, idx) => (
+                                <li key={idx}>{file.name}</li>
+                              ))}
+                            </ul>
+                          </div>
                         )}
                       </div>
 
@@ -2242,6 +2194,11 @@ No header mapping needed.`);
                               </div>
                               <p className="text-sm text-gray-500 mt-1">
                                 تم الإنشاء: {new Date(dataset.createdAt).toLocaleString('ar-SA', { dateStyle: 'short', timeStyle: 'short' })}
+                                {dataset.activateDate && dataset.activateTime && !dataset.isActive && (
+                                  <span className="ml-2 text-blue-600">
+                                    | مجدول للتفعيل: {dataset.activateDate} {dataset.activateTime}
+                                  </span>
+                                )}
                               </p>
                             </div>
                           </div>
@@ -3371,6 +3328,92 @@ No header mapping needed.`);
         </div>
       )}
 
+      {/* Activation Modal */}
+      {showActivateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-900">
+                تفعيل مجموعات البيانات
+              </h2>
+              <button
+                onClick={() => {
+                  setShowActivateModal(false);
+                  setScheduleActivation(false);
+                  setActivateDate("");
+                  setActivateTime("");
+                }}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="scheduleActivation"
+                  checked={scheduleActivation}
+                  onChange={(e) => setScheduleActivation(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="scheduleActivation" className="text-sm text-gray-700">
+                  جدولة التفعيل (تاريخ ووقت)
+                </label>
+              </div>
+              
+              {scheduleActivation && (
+                <div className="space-y-4 pt-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      تاريخ التفعيل (YYYY-MM-DD)
+                    </label>
+                    <input
+                      type="date"
+                      value={activateDate}
+                      onChange={(e) => setActivateDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      وقت التفعيل (HH:MM)
+                    </label>
+                    <input
+                      type="time"
+                      value={activateTime}
+                      onChange={(e) => setActivateTime(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex gap-2 pt-4">
+                <button
+                  onClick={confirmActivate}
+                  disabled={loading || (scheduleActivation && (!activateDate || !activateTime))}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {scheduleActivation ? "جدولة التفعيل" : "تفعيل الآن"}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowActivateModal(false);
+                    setScheduleActivation(false);
+                    setActivateDate("");
+                    setActivateTime("");
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
