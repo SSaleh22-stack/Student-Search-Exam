@@ -710,6 +710,8 @@ END:VCALENDAR`;
               width={200}
               height={80}
               className="h-12 sm:h-16 md:h-20 w-auto"
+              style={{ width: "auto" }}
+              priority
             />
           </div>
           <div className="mb-4 sm:mb-6 flex justify-center">

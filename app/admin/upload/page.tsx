@@ -1651,6 +1651,8 @@ No header mapping needed.`);
               width={200}
               height={48}
               className="h-12 w-auto"
+              style={{ width: "auto" }}
+              priority
             />
             <h1 className="text-3xl font-bold text-gray-900">لوحة التحكم</h1>
           </div>
