@@ -4,11 +4,24 @@ import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
+// Get base URL from environment or use default
+const getBaseUrl = () => {
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    return process.env.NEXT_PUBLIC_BASE_URL;
+  }
+  // Default fallback - should be set in production
+  return "https://student-search-exam.vercel.app";
+};
+
 export const metadata: Metadata = {
-  title: "البحث عن جدول الامتحانات للطلاب في مقر الجامعة بمحافظة الرس",
+  metadataBase: new URL(getBaseUrl()),
+  title: "امتحانات مقر جامعة القصيم في الرس",
   description: "البحث عن جدول الامتحانات في مقر الجامعة بمحافظة الرس",
   openGraph: {
-    title: "البحث عن جدول الامتحانات في مقر الجامعة بمحافظة الرس",
+    title: "امتحانات مقر جامعة القصيم في الرس",
     description: "البحث عن جدول الامتحانات في مقر الجامعة بمحافظة الرس",
   },
 };
