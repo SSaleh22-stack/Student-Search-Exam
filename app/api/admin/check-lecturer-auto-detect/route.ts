@@ -82,12 +82,12 @@ export async function POST(request: NextRequest) {
 
     const mapping: Record<string, string | undefined> = {
       lecturer_name: findArabicHeader(
-        ["lecturer's name", "lecturer name", "lecturer", "اسم المحاضر", "المحاضر"],
+        ["doctor role", "doctor_role", "doctor", "محاضر رئيسي", "المحاضر", "دور المحاضر", "lecturer's name", "lecturer name", "lecturer", "اسم المحاضر", "المحاضر"],
         headers,
         usedHeaders,
         true
       ) || headers[0],
-      role: findArabicHeader(["role", "الدور", "المنصب"], headers, usedHeaders, false),
+      doctor_role: findArabicHeader(["role", "الدور", "المنصب"], headers, usedHeaders, false),
       grade: findArabicHeader(["grade", "الدرجة", "الرتبة"], headers, usedHeaders, false),
       exam_code: findArabicHeader(["exam code", "exam_code", "رمز الاختبار"], headers, usedHeaders, false),
       section: findArabicHeader(
@@ -151,6 +151,41 @@ export async function POST(request: NextRequest) {
         usedHeaders,
         false
       ),
+      commenter1_name: findArabicHeader(
+        ["الملاحظ الأساسي", "commenter 1", "commenter1", "commenter_1", "معلق 1", "المعلق الأول"],
+        headers,
+        usedHeaders,
+        false
+      ),
+      commenter1_role: undefined, // Auto-set to header name during parsing
+      commenter2_name: findArabicHeader(
+        ["ملاحظ إضافي 1", "ملاحظ اضافي 1", "commenter 2", "commenter2", "commenter_2", "معلق 2", "المعلق الثاني"],
+        headers,
+        usedHeaders,
+        false
+      ),
+      commenter2_role: undefined, // Auto-set to header name during parsing
+      commenter3_name: findArabicHeader(
+        ["ملاحظ إضافي 2", "ملاحظ اضافي 2", "commenter 3", "commenter3", "commenter_3", "معلق 3", "المعلق الثالث"],
+        headers,
+        usedHeaders,
+        false
+      ),
+      commenter3_role: undefined, // Auto-set to header name during parsing
+      commenter4_name: findArabicHeader(
+        ["ملاحظ إضافي 3", "ملاحظ اضافي 3", "commenter 4", "commenter4", "commenter_4", "معلق 4", "المعلق الرابع"],
+        headers,
+        usedHeaders,
+        false
+      ),
+      commenter4_role: undefined, // Auto-set to header name during parsing
+      commenter5_name: findArabicHeader(
+        ["ملاحظ إضافي 4", "ملاحظ اضافي 4", "commenter 5", "commenter5", "commenter_5", "معلق 5", "المعلق الخامس"],
+        headers,
+        usedHeaders,
+        false
+      ),
+      commenter5_role: undefined, // Auto-set to header name during parsing
     };
 
     // Check if all required fields are mapped

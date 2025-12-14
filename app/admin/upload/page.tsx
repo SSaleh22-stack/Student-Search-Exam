@@ -44,7 +44,7 @@ interface EnrollmentData {
 interface LecturerExamData {
   id: string;
   lecturerName: string;
-  role?: string;
+  doctorRole?: string;
   grade?: string;
   examCode?: string;
   section: string;
@@ -58,6 +58,16 @@ interface LecturerExamData {
   examPeriod: string;
   periodStart: string;
   invigilator?: string;
+  commenter1Name?: string;
+  commenter1Role?: string;
+  commenter2Name?: string;
+  commenter2Role?: string;
+  commenter3Name?: string;
+  commenter3Role?: string;
+  commenter4Name?: string;
+  commenter4Role?: string;
+  commenter5Name?: string;
+  commenter5Role?: string;
 }
 
 interface DatasetDetails {
@@ -941,19 +951,76 @@ No header mapping needed.`);
           // Keep existing mapping, just update headers
           setLecturerMapping(lecturerMapping);
         } else {
-          // Auto-map headers (try to match)
-          const autoMapping: HeaderMapping = {};
-          data.requiredFields.forEach((field: string) => {
-            const normalizedField = field.toLowerCase().replace(/_/g, "");
-            const matched = data.headers.find((h: string) => {
-              const normalized = h.toLowerCase().replace(/\s+/g, "").replace(/_/g, "");
-              return normalized.includes(normalizedField) || normalizedField.includes(normalized);
+          // Use the check-lecturer-auto-detect API for proper header detection
+          const detectFormData = new FormData();
+          detectFormData.append("file", file);
+          
+          try {
+            const detectRes = await fetch("/api/admin/check-lecturer-auto-detect", {
+              method: "POST",
+              body: detectFormData,
             });
-            if (matched) {
-              autoMapping[field] = matched;
+            
+            if (detectRes.ok) {
+              const detectData = await safeJsonParse(detectRes);
+              // Use the detected mapping from the API (includes doctor, commenter fields)
+              setLecturerMapping(detectData.mapping || {});
+            } else {
+              // Fallback to simple auto-mapping if detection fails
+              const autoMapping: HeaderMapping = {};
+              data.requiredFields.forEach((field: string) => {
+                // Special handling for lecturer_name - prioritize "doctor role" header
+                if (field === "lecturer_name") {
+                  const doctorRoleHeader = data.headers.find((h: string) => {
+                    const normalized = h.toLowerCase().trim();
+                    return normalized === "doctor role" || normalized === "doctor_role" || 
+                           normalized.includes("doctor role") || normalized.includes("دور المحاضر");
+                  });
+                  if (doctorRoleHeader) {
+                    autoMapping[field] = doctorRoleHeader;
+                    return;
+                  }
+                }
+                
+                const normalizedField = field.toLowerCase().replace(/_/g, "");
+                const matched = data.headers.find((h: string) => {
+                  const normalized = h.toLowerCase().replace(/\s+/g, "").replace(/_/g, "");
+                  return normalized.includes(normalizedField) || normalizedField.includes(normalized);
+                });
+                if (matched) {
+                  autoMapping[field] = matched;
+                }
+              });
+              setLecturerMapping(autoMapping);
             }
-          });
-          setLecturerMapping(autoMapping);
+          } catch (detectErr) {
+            // Fallback to simple auto-mapping if detection fails
+            const autoMapping: HeaderMapping = {};
+            data.requiredFields.forEach((field: string) => {
+              // Special handling for lecturer_name - prioritize "doctor role" header
+              if (field === "lecturer_name") {
+                const doctorRoleHeader = data.headers.find((h: string) => {
+                  const normalized = h.toLowerCase().trim();
+                  return normalized === "doctor role" || normalized === "doctor_role" || 
+                         normalized.includes("doctor role") || normalized.includes("دور المحاضر");
+                });
+                if (doctorRoleHeader) {
+                  autoMapping[field] = doctorRoleHeader;
+                  return;
+                }
+              }
+              
+              const normalizedField = field.toLowerCase().replace(/_/g, "");
+              const matched = data.headers.find((h: string) => {
+                const normalized = h.toLowerCase().replace(/\s+/g, "").replace(/_/g, "");
+                return normalized.includes(normalizedField) || normalizedField.includes(normalized);
+              });
+              if (matched) {
+                autoMapping[field] = matched;
+              }
+            });
+            setLecturerMapping(autoMapping);
+          }
         }
       } else {
         setEnrollHeaders(data.headers);
@@ -1484,13 +1551,18 @@ No header mapping needed.`);
       "room": "القاعة",
       "exam_period": "فترة الامتحان",
       "period_start": "وقت البداية",
-      "role": "الدور",
+      "doctor_role": "دور المحاضر",
       "grade": "الدرجة",
       "exam_code": "رمز الامتحان",
       "number_of_students": "عدد الطلاب",
       "column": "الأعمدة",
       "day": "اليوم",
       "invigilator": "المراقب",
+      "commenter1_name": "معلق 1",
+      "commenter2_name": "معلق 2",
+      "commenter3_name": "معلق 3",
+      "commenter4_name": "معلق 4",
+      "commenter5_name": "معلق 5",
       // Enrollment fields
       "student_id": "رقم الطالب",
     };
@@ -1993,7 +2065,7 @@ No header mapping needed.`);
                             </select>
                           </div>
                         ))}
-                        {["role", "grade", "exam_code", "number_of_students", "column", "day", "invigilator"].map((field) => (
+                        {["grade", "exam_code", "number_of_students", "column", "day", "invigilator"].map((field) => (
                           <div key={field} className="flex items-center gap-2">
                             <label className="text-xs text-gray-600 w-28">
                               {getFieldLabel(field)} (اختياري):
@@ -2001,6 +2073,37 @@ No header mapping needed.`);
                             <select
                               value={lecturerMapping[field] || ""}
                               onChange={(e) => setLecturerMapping({ ...lecturerMapping, [field]: e.target.value })}
+                              className="flex-1 text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white hover:border-purple-400 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                              disabled={uploading || readingHeaders}
+                            >
+                              <option value="">اختر العنوان (اختياري)...</option>
+                              {lecturerHeaders.map((header) => (
+                                <option key={header} value={header}>
+                                  {header}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ))}
+                        {["commenter1_name", "commenter2_name", "commenter3_name", "commenter4_name", "commenter5_name"].map((field) => (
+                          <div key={field} className="flex items-center gap-2">
+                            <label className="text-xs text-gray-600 w-28">
+                              {getFieldLabel(field)} (اختياري):
+                            </label>
+                            <select
+                              value={lecturerMapping[field] || ""}
+                              onChange={(e) => {
+                                const newMapping = { ...lecturerMapping, [field]: e.target.value };
+                                // Auto-set the role field based on the header name
+                                const roleField = field.replace("_name", "_role");
+                                if (e.target.value) {
+                                  // The header name itself is the role
+                                  newMapping[roleField] = e.target.value;
+                                } else {
+                                  newMapping[roleField] = "";
+                                }
+                                setLecturerMapping(newMapping);
+                              }}
                               className="flex-1 text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white hover:border-purple-400 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                               disabled={uploading || readingHeaders}
                             >
@@ -2319,7 +2422,7 @@ No header mapping needed.`);
                                         {details.lecturerExams.map((exam) => (
                                           <tr key={exam.id} className="hover:bg-gray-50">
                                             <td className="px-3 py-2 font-medium text-gray-900">{exam.lecturerName}</td>
-                                            <td className="px-3 py-2 text-gray-600">{exam.role || "-"}</td>
+                                            <td className="px-3 py-2 text-gray-600">{exam.doctorRole || "-"}</td>
                                             <td className="px-3 py-2 text-gray-600">{exam.grade || "-"}</td>
                                             <td className="px-3 py-2 text-gray-600">{exam.examCode || "-"}</td>
                                             <td className="px-3 py-2 text-gray-700">{exam.courseCode}</td>

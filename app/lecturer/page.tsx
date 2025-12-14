@@ -8,7 +8,8 @@ import Image from "next/image";
 
 interface LecturerExam {
   lecturerName: string;
-  role?: string;
+  doctorRole?: string;
+  matchedRole?: string; // The role of the searched person in this exam
   grade?: string;
   examCode?: string;
   section: string;
@@ -22,6 +23,16 @@ interface LecturerExam {
   examPeriod: string;
   periodStart: string;
   invigilator?: string;
+  commenter1Name?: string;
+  commenter1Role?: string;
+  commenter2Name?: string;
+  commenter2Role?: string;
+  commenter3Name?: string;
+  commenter3Role?: string;
+  commenter4Name?: string;
+  commenter4Role?: string;
+  commenter5Name?: string;
+  commenter5Role?: string;
 }
 
 export default function LecturerPage() {
@@ -843,16 +854,15 @@ END:VCALENDAR`;
                 <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-3 sm:p-4 mb-4 border border-purple-200">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex-1">
-                      <p className="text-xs font-medium text-purple-600 mb-1">المحاضر</p>
                       <h3 className="text-base sm:text-lg font-bold text-gray-900">
                         {exam.lecturerName}
                       </h3>
                     </div>
                     <div className="text-right sm:text-left">
-                      {exam.role && (
+                      {exam.matchedRole && (
                         <div className="mb-1">
-                          <p className="text-xs font-medium text-purple-600">الدور</p>
-                          <p className="text-sm font-semibold text-gray-700">{exam.role}</p>
+                          <p className="text-xs font-medium text-purple-600">الدور:</p>
+                          <p className="text-sm font-semibold text-gray-700">{exam.matchedRole}</p>
                         </div>
                       )}
                       {exam.grade && (
@@ -920,6 +930,38 @@ END:VCALENDAR`;
                     <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base sm:col-span-2">
                       <span className="text-xs sm:text-sm text-gray-500">مراقب:</span>
                       <span className="font-medium">{exam.invigilator}</span>
+                    </div>
+                  )}
+                  {(exam.commenter1Name || exam.commenter2Name || exam.commenter3Name || exam.commenter4Name || exam.commenter5Name) && (
+                    <div className="sm:col-span-2 mt-2 pt-2 border-t border-gray-200">
+                      <p className="text-xs font-medium text-purple-600 mb-2">الملاحظون:</p>
+                      <div className="space-y-1">
+                        {exam.commenter1Name && (
+                          <div className="text-sm text-gray-700">
+                            <span className="font-medium">{exam.commenter1Role || "الملاحظ الأساسي"}:</span> {exam.commenter1Name}
+                          </div>
+                        )}
+                        {exam.commenter2Name && (
+                          <div className="text-sm text-gray-700">
+                            <span className="font-medium">{exam.commenter2Role || "ملاحظ إضافي 1"}:</span> {exam.commenter2Name}
+                          </div>
+                        )}
+                        {exam.commenter3Name && (
+                          <div className="text-sm text-gray-700">
+                            <span className="font-medium">{exam.commenter3Role || "ملاحظ إضافي 2"}:</span> {exam.commenter3Name}
+                          </div>
+                        )}
+                        {exam.commenter4Name && (
+                          <div className="text-sm text-gray-700">
+                            <span className="font-medium">{exam.commenter4Role || "ملاحظ إضافي 3"}:</span> {exam.commenter4Name}
+                          </div>
+                        )}
+                        {exam.commenter5Name && (
+                          <div className="text-sm text-gray-700">
+                            <span className="font-medium">{exam.commenter5Role || "ملاحظ إضافي 4"}:</span> {exam.commenter5Name}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

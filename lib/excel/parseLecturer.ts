@@ -5,7 +5,7 @@ import { parseArabicTime, extractDateFromCellText, hijriToGregorian } from "@/li
 export interface ParseLecturerResult {
   validRows: Array<{
     lecturerName: string;
-    role?: string;
+    doctorRole?: string;
     grade?: string;
     examCode?: string;
     section: string;
@@ -19,6 +19,16 @@ export interface ParseLecturerResult {
     examPeriod: string;
     periodStart: string;
     invigilator?: string;
+    commenter1Name?: string;
+    commenter1Role?: string;
+    commenter2Name?: string;
+    commenter2Role?: string;
+    commenter3Name?: string;
+    commenter3Role?: string;
+    commenter4Name?: string;
+    commenter4Role?: string;
+    commenter5Name?: string;
+    commenter5Role?: string;
   }>;
   errors: Array<{
     row: number;
@@ -29,7 +39,7 @@ export interface ParseLecturerResult {
 
 const lecturerExamRowSchema = z.object({
   lecturer_name: z.string().min(1, "Lecturer name is required"),
-  role: z.string().optional(),
+  doctor_role: z.string().optional(),
   grade: z.string().optional(),
   exam_code: z.string().optional(),
   section: z.union([z.string(), z.number()]).transform((val) => String(val)),
@@ -158,11 +168,21 @@ const lecturerExamRowSchema = z.object({
     return str;
   }).pipe(z.string().regex(/^\d{2}:\d{2}$/, "Time must be in HH:MM format")),
   invigilator: z.string().optional(),
+  commenter1_name: z.string().optional(),
+  commenter1_role: z.string().optional(),
+  commenter2_name: z.string().optional(),
+  commenter2_role: z.string().optional(),
+  commenter3_name: z.string().optional(),
+  commenter3_role: z.string().optional(),
+  commenter4_name: z.string().optional(),
+  commenter4_role: z.string().optional(),
+  commenter5_name: z.string().optional(),
+  commenter5_role: z.string().optional(),
 });
 
 export interface LecturerHeaderMapping {
   lecturer_name: string;
-  role?: string;
+  doctor_role?: string;
   grade?: string;
   exam_code?: string;
   section: string;
@@ -176,6 +196,16 @@ export interface LecturerHeaderMapping {
   exam_period: string;
   period_start: string;
   invigilator?: string;
+  commenter1_name?: string;
+  commenter1_role?: string;
+  commenter2_name?: string;
+  commenter2_role?: string;
+  commenter3_name?: string;
+  commenter3_role?: string;
+  commenter4_name?: string;
+  commenter4_role?: string;
+  commenter5_name?: string;
+  commenter5_role?: string;
 }
 
 const normalizeHeader = (header: string): string => {
@@ -249,14 +279,22 @@ export async function parseLecturerSchedule(
   const usedHeaders = new Set<string>();
 
   // Auto-detect headers (always run to have fallback)
+  // Note: Headers like "doctor", "doctor role", "commenter 1" contain the NAMES, not roles
+  // The header name itself indicates the role (doctor, commenter 1, etc.)
+  console.log(`[parseLecturer] Available headers: ${headers.join(", ")}`);
   const autoDetectedMapping: LecturerHeaderMapping = {
     lecturer_name: findArabicHeader(
-      ["lecturer's name", "lecturer name", "lecturer", "اسم المحاضر", "المحاضر"],
+      ["doctor role", "doctor_role", "doctor", "محاضر رئيسي", "المحاضر", "دور المحاضر", "lecturer's name", "lecturer name", "lecturer", "اسم المحاضر", "المحاضر"],
       headers,
       usedHeaders,
       true
     ) || headers[0],
-    role: findArabicHeader(["role", "الدور", "المنصب"], headers, usedHeaders, false),
+    doctor_role: findArabicHeader(
+      ["role", "الدور", "المنصب"],
+      headers,
+      usedHeaders,
+      false
+    ),
     grade: findArabicHeader(["grade", "الدرجة", "الرتبة"], headers, usedHeaders, false),
     exam_code: findArabicHeader(["exam code", "exam_code", "رمز الاختبار"], headers, usedHeaders, false),
     section: findArabicHeader(
@@ -320,7 +358,53 @@ export async function parseLecturerSchedule(
       usedHeaders,
       false
     ),
+    // Commenter fields
+    // Headers: "الملاحظ الأساسي" (commenter1), "ملاحظ إضافي 1" (commenter2), "ملاحظ إضافي 2" (commenter3), etc.
+    // Priority: First try "الملاحظ الأساسي" for commenter1, then "ملاحظ إضافي 1" for commenter2, etc.
+    commenter1_name: findArabicHeader(
+      ["الملاحظ الأساسي", "commenter 1", "commenter1", "commenter_1", "معلق 1", "المعلق الأول"],
+      headers,
+      usedHeaders,
+      false
+    ),
+    commenter1_role: undefined, // Will be auto-set to the header name during parsing
+    commenter2_name: findArabicHeader(
+      ["ملاحظ إضافي 1", "ملاحظ اضافي 1", "commenter 2", "commenter2", "commenter_2", "معلق 2", "المعلق الثاني"],
+      headers,
+      usedHeaders,
+      false
+    ),
+    commenter2_role: undefined, // Will be auto-set to the header name during parsing
+    commenter3_name: findArabicHeader(
+      ["ملاحظ إضافي 2", "ملاحظ اضافي 2", "commenter 3", "commenter3", "commenter_3", "معلق 3", "المعلق الثالث"],
+      headers,
+      usedHeaders,
+      false
+    ),
+    commenter3_role: undefined, // Will be auto-set to the header name during parsing
+    commenter4_name: findArabicHeader(
+      ["ملاحظ إضافي 3", "ملاحظ اضافي 3", "commenter 4", "commenter4", "commenter_4", "معلق 4", "المعلق الرابع"],
+      headers,
+      usedHeaders,
+      false
+    ),
+    commenter4_role: undefined, // Will be auto-set to the header name during parsing
+    commenter5_name: findArabicHeader(
+      ["ملاحظ إضافي 4", "ملاحظ اضافي 4", "commenter 5", "commenter5", "commenter_5", "معلق 5", "المعلق الخامس"],
+      headers,
+      usedHeaders,
+      false
+    ),
+    commenter5_role: undefined, // Will be auto-set to the header name during parsing
   };
+  
+  // Log detected commenter headers
+  console.log(`[parseLecturer] Detected commenter headers:`);
+  console.log(`  commenter1_name: ${autoDetectedMapping.commenter1_name || "NOT FOUND"}`);
+  console.log(`  commenter2_name: ${autoDetectedMapping.commenter2_name || "NOT FOUND"}`);
+  console.log(`  commenter3_name: ${autoDetectedMapping.commenter3_name || "NOT FOUND"}`);
+  console.log(`  commenter4_name: ${autoDetectedMapping.commenter4_name || "NOT FOUND"}`);
+  console.log(`  commenter5_name: ${autoDetectedMapping.commenter5_name || "NOT FOUND"}`);
 
   if (headerMapping) {
     // Merge provided mapping with auto-detected (provided takes precedence, but fill missing required fields)
@@ -615,9 +699,39 @@ export async function parseLecturerSchedule(
       }
       
       const validated = lecturerExamRowSchema.parse(rowData);
+      
+      // Auto-set doctor role based on the header name (the header name IS the role)
+      // Return just the base role - combining with commenter roles will happen in upload route
+      const getDoctorRole = (): string => {
+        const mappedHeader = mapping.lecturer_name;
+        if (!mappedHeader) return "محاضر رئيسي"; // Default role
+        // The header name itself is the role (e.g., "doctor role" = role)
+        // But we'll combine with commenter roles in the upload route
+        return mappedHeader;
+      };
+      
+      // Auto-set commenter roles - use Arabic header names
+      const getCommenterRole = (commenterNum: number, name: string | undefined): string | undefined => {
+        if (!name) return undefined;
+        // Use Arabic role names matching the headers
+        const roleNames: Record<number, string> = {
+          1: "الملاحظ الأساسي",
+          2: "ملاحظ إضافي 1",
+          3: "ملاحظ إضافي 2",
+          4: "ملاحظ إضافي 3",
+          5: "ملاحظ إضافي 4",
+        };
+        return roleNames[commenterNum] || `معلق ${commenterNum}`;
+      };
+      
+      // Set base role - combining with commenter roles will be done in upload route
+      const lecturerName = validated.lecturer_name.trim();
+      const doctorRole = getDoctorRole();
+      
+      // Create main lecturer record - roles will be combined in upload route
       validRows.push({
-        lecturerName: validated.lecturer_name.trim(),
-        role: validated.role?.trim(),
+        lecturerName: lecturerName,
+        doctorRole: doctorRole, // Base role only - will be combined in upload route
         grade: validated.grade?.trim(),
         examCode: validated.exam_code?.trim(),
         section: validated.section.trim(),
@@ -631,6 +745,16 @@ export async function parseLecturerSchedule(
         examPeriod: validated.exam_period.trim(),
         periodStart: validated.period_start.trim(),
         invigilator: validated.invigilator?.trim(),
+        commenter1Name: validated.commenter1_name?.trim(),
+        commenter1Role: getCommenterRole(1, validated.commenter1_name),
+        commenter2Name: validated.commenter2_name?.trim(),
+        commenter2Role: getCommenterRole(2, validated.commenter2_name),
+        commenter3Name: validated.commenter3_name?.trim(),
+        commenter3Role: getCommenterRole(3, validated.commenter3_name),
+        commenter4Name: validated.commenter4_name?.trim(),
+        commenter4Role: getCommenterRole(4, validated.commenter4_name),
+        commenter5Name: validated.commenter5_name?.trim(),
+        commenter5Role: getCommenterRole(5, validated.commenter5_name),
       });
     } catch (err) {
       if (err instanceof z.ZodError) {

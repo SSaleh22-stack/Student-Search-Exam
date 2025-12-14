@@ -490,12 +490,69 @@ export async function POST(request: NextRequest) {
         try {
           // Keep date as-is from Excel (Hijri or Gregorian - no conversion)
           const examDateStr = String(exam.examDate).trim();
+          const lecturerName = exam.lecturerName.trim();
+          const lecturerNameLower = lecturerName.toLowerCase();
+          
+          // Get base role from parsing
+          const baseRole = exam.doctorRole?.trim() || "محاضر رئيسي";
+          const lecturerRoles: string[] = [baseRole];
+          
+          // Check each commenter - if same as lecturer, add to roles; if different, create separate record
+          const commenters: Array<{name: string, role: string}> = [];
+          
+          const commenterFields = [
+            { name: exam.commenter1Name, role: exam.commenter1Role, num: 1 },
+            { name: exam.commenter2Name, role: exam.commenter2Role, num: 2 },
+            { name: exam.commenter3Name, role: exam.commenter3Role, num: 3 },
+            { name: exam.commenter4Name, role: exam.commenter4Role, num: 4 },
+            { name: exam.commenter5Name, role: exam.commenter5Role, num: 5 },
+          ];
+          
+          console.log(`[Upload] Processing commenters for lecturer ${lecturerName}:`);
+          for (const commenter of commenterFields) {
+            const commenterName = commenter.name?.trim();
+            if (commenterName) {
+              const commenterNameLower = commenterName.toLowerCase();
+              // Get role from parsed data, or use default based on commenter number
+              const roleNames: Record<number, string> = {
+                1: "الملاحظ الأساسي",
+                2: "ملاحظ إضافي 1",
+                3: "ملاحظ إضافي 2",
+                4: "ملاحظ إضافي 3",
+                5: "ملاحظ إضافي 4",
+              };
+              const commenterRole = commenter.role?.trim() || roleNames[commenter.num] || `معلق ${commenter.num}`;
+              
+              console.log(`[Upload] Checking commenter ${commenter.num}: ${commenterName} (role: ${commenterRole})`);
+              
+              if (commenterNameLower === lecturerNameLower) {
+                // Same person - add commenter role to lecturer roles (avoid duplicates)
+                if (!lecturerRoles.includes(commenterRole)) {
+                  lecturerRoles.push(commenterRole);
+                  console.log(`[Upload] ✓ Same person: ${lecturerName} is also ${commenterRole}, combining roles: ${lecturerRoles.join(",")}`);
+                } else {
+                  console.log(`[Upload] ✓ Same person but role already added: ${commenterRole}`);
+                }
+              } else {
+                // Different person - will create separate record
+                commenters.push({ name: commenterName, role: commenterRole });
+                console.log(`[Upload] ✓ Different person: ${commenterName} as ${commenterRole}, will create separate record`);
+              }
+            } else {
+              console.log(`[Upload] Commenter ${commenter.num}: No name found`);
+            }
+          }
+          
+          console.log(`[Upload] Lecturer: ${lecturerName}, Roles: ${lecturerRoles.join(",")}, Separate commenters: ${commenters.length}`);
 
+          // Create main lecturer record with combined roles
+          const finalLecturerRole = lecturerRoles.join(",");
+          console.log(`[Upload] Creating lecturer record: ${lecturerName} with role: ${finalLecturerRole}`);
           await prisma.lecturerExam.create({
             data: {
               datasetId: dataset.id,
-              lecturerName: exam.lecturerName.trim(),
-              role: exam.role?.trim() || null,
+              lecturerName: lecturerName,
+              doctorRole: finalLecturerRole, // Combine all roles
               grade: exam.grade?.trim() || null,
               examCode: exam.examCode?.trim() || null,
               section: exam.section.trim(),
@@ -509,9 +566,66 @@ export async function POST(request: NextRequest) {
               examPeriod: exam.examPeriod.trim(),
               periodStart: exam.periodStart.trim(),
               invigilator: exam.invigilator?.trim() || null,
+              commenter1Name: exam.commenter1Name?.trim() || null,
+              commenter1Role: exam.commenter1Name ? (exam.commenter1Role?.trim() || "الملاحظ الأساسي") : null,
+              commenter2Name: exam.commenter2Name?.trim() || null,
+              commenter2Role: exam.commenter2Name ? (exam.commenter2Role?.trim() || "ملاحظ إضافي 1") : null,
+              commenter3Name: exam.commenter3Name?.trim() || null,
+              commenter3Role: exam.commenter3Name ? (exam.commenter3Role?.trim() || "ملاحظ إضافي 2") : null,
+              commenter4Name: exam.commenter4Name?.trim() || null,
+              commenter4Role: exam.commenter4Name ? (exam.commenter4Role?.trim() || "ملاحظ إضافي 3") : null,
+              commenter5Name: exam.commenter5Name?.trim() || null,
+              commenter5Role: exam.commenter5Name ? (exam.commenter5Role?.trim() || "ملاحظ إضافي 4") : null,
             },
           });
           lecturerInserted++;
+          
+          // Create separate records for commenters who are not the lecturer
+          for (const commenter of commenters) {
+            try {
+              if (!commenter.name || !commenter.role) {
+                console.warn(`[Upload] Skipping commenter record - missing name or role:`, commenter);
+                continue;
+              }
+              
+              console.log(`[Upload] Creating separate commenter record: ${commenter.name} with role: ${commenter.role}`);
+              const commenterRecord = await prisma.lecturerExam.create({
+                data: {
+                  datasetId: dataset.id,
+                  lecturerName: commenter.name.trim(),
+                  doctorRole: commenter.role.trim(), // Commenter role only
+                  grade: exam.grade?.trim() || null,
+                  examCode: exam.examCode?.trim() || null,
+                  section: exam.section.trim(),
+                  courseCode: exam.courseCode.trim(),
+                  courseName: exam.courseName.trim(),
+                  numberOfStudents: exam.numberOfStudents ?? null,
+                  room: exam.room.trim(),
+                  column: exam.column || null,
+                  day: exam.day?.trim() || null,
+                  examDate: examDateStr,
+                  examPeriod: exam.examPeriod.trim(),
+                  periodStart: exam.periodStart.trim(),
+                  invigilator: exam.invigilator?.trim() || null,
+                  commenter1Name: null,
+                  commenter1Role: null,
+                  commenter2Name: null,
+                  commenter2Role: null,
+                  commenter3Name: null,
+                  commenter3Role: null,
+                  commenter4Name: null,
+                  commenter4Role: null,
+                  commenter5Name: null,
+                  commenter5Role: null,
+                },
+              });
+              console.log(`[Upload] Successfully created commenter record with ID: ${commenterRecord.id}`);
+              lecturerInserted++;
+            } catch (err) {
+              console.error(`[Upload] Error inserting commenter record for ${commenter.name}:`, err);
+              failed++;
+            }
+          }
         } catch (err) {
           console.error(`[Upload] Error inserting lecturer exam:`, err);
           failed++;

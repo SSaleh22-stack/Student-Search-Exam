@@ -65,7 +65,7 @@ model LecturerExam {
   id              String   @id @default(cuid())
   datasetId       String
   lecturerName    String
-  role            String?
+  doctorRole      String?  // Role for the doctor
   grade           String?
   examCode        String?
   section         String
@@ -79,6 +79,16 @@ model LecturerExam {
   examPeriod      String
   periodStart     String   // HH:MM format
   invigilator     String?
+  commenter1Name  String?
+  commenter1Role  String?
+  commenter2Name  String?
+  commenter2Role  String?
+  commenter3Name  String?
+  commenter3Role  String?
+  commenter4Name  String?
+  commenter4Role  String?
+  commenter5Name  String?
+  commenter5Role  String?
   
   dataset Dataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
   
