@@ -47,16 +47,16 @@ export async function checkScheduledDatasetActivations() {
     // Activate all datasets whose scheduled time has arrived
     if (datasetsToActivate.length > 0) {
       try {
-        // First, deactivate all other datasets of the same type
-        const datasetsToUpdate = await prisma.dataset.findMany({
-          where: { id: { in: datasetsToActivate } },
-          select: { type: true },
-        });
+      // First, deactivate all other datasets of the same type
+      const datasetsToUpdate = await prisma.dataset.findMany({
+        where: { id: { in: datasetsToActivate } },
+        select: { type: true },
+      });
 
         if (datasetsToUpdate.length > 0) {
           const types = [...new Set(datasetsToUpdate.map(d => d.type))];
 
-          for (const type of types) {
+      for (const type of types) {
             try {
               // Build where clause conditionally based on whether type is null or not
               // Only deactivate if there are other datasets to deactivate
@@ -76,10 +76,10 @@ export async function checkScheduledDatasetActivations() {
               
               // Only update if we have a valid where clause
               if (Object.keys(whereClause).length > 0) {
-                await prisma.dataset.updateMany({
+        await prisma.dataset.updateMany({
                   where: whereClause,
-                  data: { isActive: false },
-                });
+          data: { isActive: false },
+        });
               }
             } catch (updateError) {
               console.error(`Error deactivating datasets of type ${type}:`, updateError);
@@ -91,20 +91,20 @@ export async function checkScheduledDatasetActivations() {
               // Continue with other types even if one fails
             }
           }
-        }
+      }
 
-        // Activate the scheduled datasets
-        await prisma.dataset.updateMany({
-          where: { id: { in: datasetsToActivate } },
-          data: {
-            isActive: true,
-            activateDate: null,
+      // Activate the scheduled datasets
+      await prisma.dataset.updateMany({
+        where: { id: { in: datasetsToActivate } },
+        data: {
+          isActive: true,
+          activateDate: null,
             activateTime: null,
             activateTimezoneOffset: null, // Clear scheduled activation after activating
-          },
-        });
+        },
+      });
 
-        console.log(`Activated ${datasetsToActivate.length} scheduled dataset(s)`);
+      console.log(`Activated ${datasetsToActivate.length} scheduled dataset(s)`);
       } catch (activationError) {
         console.error("Error during dataset activation:", activationError);
         throw activationError; // Re-throw to be caught by outer catch

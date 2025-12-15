@@ -488,10 +488,26 @@ export async function POST(request: NextRequest) {
       console.log(`[Upload] Starting to insert ${lecturerResult.validRows.length} lecturer exams into dataset ${dataset.id}`);
       for (const exam of lecturerResult.validRows) {
         try {
+          // Debug: Log inspector data for first few rows
+          const rowIndex = lecturerResult.validRows.indexOf(exam);
+          if (rowIndex < 3) {
+            console.log(`[Upload] Row ${rowIndex + 1} - Inspector data:`, {
+              inspectorName: exam.inspectorName,
+              inspectorRole: exam.inspectorRole,
+              hasInspectorName: !!exam.inspectorName,
+              inspectorNameType: typeof exam.inspectorName,
+            });
+          }
+          
           // Keep date as-is from Excel (Hijri or Gregorian - no conversion)
           const examDateStr = String(exam.examDate).trim();
           const lecturerName = exam.lecturerName.trim();
-          const lecturerNameLower = lecturerName.toLowerCase();
+          const lecturerNameLower = lecturerName.toLowerCase().replace(/\s+/g, " ").trim();
+          
+          // Helper function to normalize names for comparison
+          const normalizeNameForComparison = (name: string): string => {
+            return name.toLowerCase().replace(/\s+/g, " ").trim();
+          };
           
           // Get base role from parsing
           const baseRole = exam.doctorRole?.trim() || "محاضر رئيسي";
@@ -512,7 +528,7 @@ export async function POST(request: NextRequest) {
           for (const commenter of commenterFields) {
             const commenterName = commenter.name?.trim();
             if (commenterName) {
-              const commenterNameLower = commenterName.toLowerCase();
+              const commenterNameLower = normalizeNameForComparison(commenterName);
               // Get role from parsed data, or use default based on commenter number
               const roleNames: Record<number, string> = {
                 1: "الملاحظ الأساسي",
@@ -543,11 +559,101 @@ export async function POST(request: NextRequest) {
             }
           }
           
-          console.log(`[Upload] Lecturer: ${lecturerName}, Roles: ${lecturerRoles.join(",")}, Separate commenters: ${commenters.length}`);
+          // ===== INSPECTOR PROCESSING =====
+          // Logic: If inspector is lecturer or commenter, add "مراقب" to their role
+          //        If inspector is different, create separate record with role "مراقب"
+          
+          let inspectorToCreate: {name: string, role: string} | null = null;
+          const inspectorName = exam.inspectorName?.trim();
+          const inspectorRole = "مراقب";
+          
+          console.log(`[Upload] ===== INSPECTOR PROCESSING START =====`);
+          console.log(`[Upload] Inspector name: "${inspectorName || "NOT FOUND"}"`);
+          
+          if (inspectorName) {
+            const inspectorNameLower = normalizeNameForComparison(inspectorName);
+            let inspectorProcessed = false;
+            
+            // Check 1: Is inspector the lecturer?
+            if (inspectorNameLower === lecturerNameLower) {
+              // Inspector is lecturer - add "مراقب" to lecturer roles
+              if (!lecturerRoles.includes(inspectorRole)) {
+                lecturerRoles.push(inspectorRole);
+                console.log(`[Upload] ✓ Inspector is lecturer: Added "${inspectorRole}". Final roles: ${lecturerRoles.join(",")}`);
+              }
+              inspectorProcessed = true;
+            }
+            
+            // Check 2: Is inspector one of the commenters?
+            if (!inspectorProcessed) {
+              for (const commenter of commenterFields) {
+                const commenterName = commenter.name?.trim();
+                if (!commenterName) continue;
+                
+                const commenterNameLower = normalizeNameForComparison(commenterName);
+                
+                if (commenterNameLower === inspectorNameLower) {
+                  // Inspector is this commenter
+                  inspectorProcessed = true;
+                  
+                  // Check if this commenter is also the lecturer
+                  if (commenterNameLower === lecturerNameLower) {
+                    // Commenter is same as lecturer - add "مراقب" to lecturer roles
+                    if (!lecturerRoles.includes(inspectorRole)) {
+                      lecturerRoles.push(inspectorRole);
+                      console.log(`[Upload] ✓ Inspector is commenter ${commenter.num} (same as lecturer): Added "${inspectorRole}". Final roles: ${lecturerRoles.join(",")}`);
+                    }
+                  } else {
+                    // Commenter is different from lecturer - add "مراقب" to commenter's role
+                    const roleNames: Record<number, string> = {
+                      1: "الملاحظ الأساسي",
+                      2: "ملاحظ إضافي 1",
+                      3: "ملاحظ إضافي 2",
+                      4: "ملاحظ إضافي 3",
+                      5: "ملاحظ إضافي 4",
+                    };
+                    const commenterRole = commenter.role?.trim() || roleNames[commenter.num] || `معلق ${commenter.num}`;
+                    
+                    // Find commenter in the commenters array and update role
+                    const commenterIndex = commenters.findIndex(c => normalizeNameForComparison(c.name) === commenterNameLower);
+                    if (commenterIndex >= 0) {
+                      // Update existing commenter's role
+                      if (!commenters[commenterIndex].role.includes(inspectorRole)) {
+                        commenters[commenterIndex].role = `${commenters[commenterIndex].role},${inspectorRole}`;
+                        console.log(`[Upload] ✓ Inspector is commenter ${commenter.num}: Updated role to "${commenters[commenterIndex].role}"`);
+                      }
+                    } else {
+                      // Commenter not in array - add with combined role
+                      commenters.push({ name: commenterName, role: `${commenterRole},${inspectorRole}` });
+                      console.log(`[Upload] ✓ Inspector is commenter ${commenter.num}: Added with role "${commenterRole},${inspectorRole}"`);
+                    }
+                  }
+                  break; // Found inspector, stop checking
+                }
+              }
+            }
+            
+            // Check 3: If inspector is not lecturer and not a commenter, create separate record
+            if (!inspectorProcessed) {
+              inspectorToCreate = { name: inspectorName, role: inspectorRole };
+              console.log(`[Upload] ✓ Inspector is different person: Will create separate record with role "${inspectorRole}"`);
+            }
+          } else {
+            console.log(`[Upload] ⚠ No inspector name found`);
+          }
+          
+          console.log(`[Upload] ===== INSPECTOR PROCESSING END =====`);
+          console.log(`[Upload] Final lecturer roles: ${lecturerRoles.join(",")}`);
+          console.log(`[Upload] Separate commenters: ${commenters.length}`);
+          console.log(`[Upload] Separate inspector: ${inspectorToCreate ? "YES" : "NO"}`);
 
           // Create main lecturer record with combined roles
           const finalLecturerRole = lecturerRoles.join(",");
-          console.log(`[Upload] Creating lecturer record: ${lecturerName} with role: ${finalLecturerRole}`);
+          console.log(`[Upload] ===== FINAL ROLE CHECK =====`);
+          console.log(`[Upload] Lecturer: ${lecturerName}`);
+          console.log(`[Upload] Final combined role: "${finalLecturerRole}"`);
+          console.log(`[Upload] Roles array: [${lecturerRoles.join(", ")}]`);
+          console.log(`[Upload] ===========================`);
           await prisma.lecturerExam.create({
             data: {
               datasetId: dataset.id,
@@ -576,6 +682,10 @@ export async function POST(request: NextRequest) {
               commenter4Role: exam.commenter4Name ? (exam.commenter4Role?.trim() || "ملاحظ إضافي 3") : null,
               commenter5Name: exam.commenter5Name?.trim() || null,
               commenter5Role: exam.commenter5Name ? (exam.commenter5Role?.trim() || "ملاحظ إضافي 4") : null,
+              // Only save inspector name/role if inspector is NOT combined (will be separate record)
+              // If inspector is combined with lecturer or commenter, it's already in the roles
+              inspectorName: inspectorToCreate ? inspectorToCreate.name : null,
+              inspectorRole: inspectorToCreate ? inspectorToCreate.role : null,
             },
           });
           lecturerInserted++;
@@ -617,12 +727,62 @@ export async function POST(request: NextRequest) {
                   commenter4Role: null,
                   commenter5Name: null,
                   commenter5Role: null,
+                  inspectorName: null,
+                  inspectorRole: null,
                 },
               });
               console.log(`[Upload] Successfully created commenter record with ID: ${commenterRecord.id}`);
               lecturerInserted++;
             } catch (err) {
               console.error(`[Upload] Error inserting commenter record for ${commenter.name}:`, err);
+              failed++;
+            }
+          }
+          
+          // Create separate record for inspector if they are different from lecturer and all commenters
+          if (inspectorToCreate) {
+            try {
+              if (!inspectorToCreate.name || !inspectorToCreate.role) {
+                console.warn(`[Upload] Skipping inspector record - missing name or role:`, inspectorToCreate);
+              } else {
+                console.log(`[Upload] Creating separate inspector record: ${inspectorToCreate.name} with role: ${inspectorToCreate.role}`);
+                const inspectorRecord = await prisma.lecturerExam.create({
+                  data: {
+                    datasetId: dataset.id,
+                    lecturerName: inspectorToCreate.name.trim(),
+                    doctorRole: inspectorToCreate.role.trim(), // Inspector role only
+                    grade: exam.grade?.trim() || null,
+                    examCode: exam.examCode?.trim() || null,
+                    section: exam.section.trim(),
+                    courseCode: exam.courseCode.trim(),
+                    courseName: exam.courseName.trim(),
+                    numberOfStudents: exam.numberOfStudents ?? null,
+                    room: exam.room.trim(),
+                    column: exam.column || null,
+                    day: exam.day?.trim() || null,
+                    examDate: examDateStr,
+                    examPeriod: exam.examPeriod.trim(),
+                    periodStart: exam.periodStart.trim(),
+                    invigilator: exam.invigilator?.trim() || null,
+                    commenter1Name: null,
+                    commenter1Role: null,
+                    commenter2Name: null,
+                    commenter2Role: null,
+                    commenter3Name: null,
+                    commenter3Role: null,
+                    commenter4Name: null,
+                    commenter4Role: null,
+                    commenter5Name: null,
+                    commenter5Role: null,
+                    inspectorName: null,
+                    inspectorRole: null,
+                  },
+                });
+                console.log(`[Upload] Successfully created inspector record with ID: ${inspectorRecord.id}`);
+                lecturerInserted++;
+              }
+            } catch (err) {
+              console.error(`[Upload] Error inserting inspector record for ${inspectorToCreate.name}:`, err);
               failed++;
             }
           }

@@ -68,6 +68,8 @@ interface LecturerExamData {
   commenter4Role?: string;
   commenter5Name?: string;
   commenter5Role?: string;
+  inspectorName?: string;
+  inspectorRole?: string;
 }
 
 interface DatasetDetails {
@@ -1557,12 +1559,13 @@ No header mapping needed.`);
       "number_of_students": "عدد الطلاب",
       "column": "الأعمدة",
       "day": "اليوم",
-      "invigilator": "المراقب",
+      "invigilator": "مراقب الامتحان",
       "commenter1_name": "معلق 1",
       "commenter2_name": "معلق 2",
       "commenter3_name": "معلق 3",
       "commenter4_name": "معلق 4",
       "commenter5_name": "معلق 5",
+      "inspector_name": "مراقب",
       // Enrollment fields
       "student_id": "رقم الطالب",
     };
@@ -2067,7 +2070,7 @@ No header mapping needed.`);
                             </select>
                           </div>
                         ))}
-                        {["grade", "exam_code", "number_of_students", "column", "day", "invigilator"].map((field) => (
+                        {["grade", "exam_code", "number_of_students", "column", "day"].map((field) => (
                           <div key={field} className="flex items-center gap-2">
                             <label className="text-xs text-gray-600 w-28">
                               {getFieldLabel(field)} (اختياري):
@@ -2118,6 +2121,34 @@ No header mapping needed.`);
                             </select>
                           </div>
                         ))}
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs text-gray-600 w-28">
+                            {getFieldLabel("inspector_name")} (اختياري):
+                          </label>
+                          <select
+                            value={lecturerMapping["inspector_name"] || ""}
+                            onChange={(e) => {
+                              const newMapping = { ...lecturerMapping, inspector_name: e.target.value };
+                              // Auto-set the role field based on the header name
+                              if (e.target.value) {
+                                // The header name itself is the role
+                                newMapping["inspector_role"] = e.target.value;
+                              } else {
+                                newMapping["inspector_role"] = "";
+                              }
+                              setLecturerMapping(newMapping);
+                            }}
+                            className="flex-1 text-sm px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white hover:border-purple-400 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            disabled={uploading || readingHeaders}
+                          >
+                            <option value="">اختر العنوان (اختياري)...</option>
+                            {lecturerHeaders.map((header) => (
+                              <option key={header} value={header}>
+                                {header}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     </div>
                   )}

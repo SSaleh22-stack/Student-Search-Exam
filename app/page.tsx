@@ -746,7 +746,7 @@ END:VCALENDAR`;
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
             <p className="text-sm sm:text-base text-amber-800 text-center font-medium">
               في حال وجود بيانات غير صحيحة آمل التواصل عبر الإيميل (rctv2@qu.edu.sa)
-            </p>
+          </p>
           </div>
         </div>
 

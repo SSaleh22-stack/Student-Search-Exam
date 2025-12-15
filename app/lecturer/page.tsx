@@ -33,6 +33,8 @@ interface LecturerExam {
   commenter4Role?: string;
   commenter5Name?: string;
   commenter5Role?: string;
+  inspectorName?: string;
+  inspectorRole?: string;
 }
 
 export default function LecturerPage() {
@@ -963,6 +965,14 @@ END:VCALENDAR`;
                             <span className="font-medium">{exam.commenter5Role || "ملاحظ إضافي 4"}:</span> {exam.commenter5Name}
                           </div>
                         )}
+                      </div>
+                    </div>
+                  )}
+                  {exam.inspectorName && (
+                    <div className="sm:col-span-2 mt-2 pt-2 border-t border-gray-200">
+                      <p className="text-xs font-medium text-purple-600 mb-2">المراقب:</p>
+                      <div className="text-sm text-gray-700">
+                        <span className="font-medium">{exam.inspectorRole || "المراقب"}:</span> {exam.inspectorName}
                       </div>
                     </div>
                   )}

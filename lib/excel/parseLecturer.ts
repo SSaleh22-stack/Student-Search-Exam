@@ -29,6 +29,8 @@ export interface ParseLecturerResult {
     commenter4Role?: string;
     commenter5Name?: string;
     commenter5Role?: string;
+    inspectorName?: string;
+    inspectorRole?: string;
   }>;
   errors: Array<{
     row: number;
@@ -178,6 +180,8 @@ const lecturerExamRowSchema = z.object({
   commenter4_role: z.string().optional(),
   commenter5_name: z.string().optional(),
   commenter5_role: z.string().optional(),
+  inspector_name: z.string().optional(),
+  inspector_role: z.string().optional(),
 });
 
 export interface LecturerHeaderMapping {
@@ -206,6 +210,8 @@ export interface LecturerHeaderMapping {
   commenter4_role?: string;
   commenter5_name?: string;
   commenter5_role?: string;
+  inspector_name?: string;
+  inspector_role?: string;
 }
 
 const normalizeHeader = (header: string): string => {
@@ -352,8 +358,89 @@ export async function parseLecturerSchedule(
       usedHeaders,
       true
     ) || headers[13],
+    // Inspector field (only one inspector) - detect BEFORE invigilator to avoid conflict
+    // IMPORTANT: This must be detected BEFORE any other field that might match "مراقب"
+    inspector_name: (() => {
+      console.log(`[parseLecturer] Starting inspector detection. Used headers so far: ${Array.from(usedHeaders).join(", ")}`);
+      
+      // First try to find "مراقب" using character code matching (handles encoding differences)
+      for (const header of headers) {
+        if (usedHeaders.has(header)) {
+          console.log(`[parseLecturer] Header "${header}" already used, skipping`);
+          continue;
+        }
+        const headerTrimmed = header.trim();
+        
+        // Check if header matches "مراقب" by character codes (handles encoding)
+        const headerCodes = headerTrimmed.split('').map(c => c.charCodeAt(0)).join(',');
+        const targetCodes = "مراقب".split('').map(c => c.charCodeAt(0)).join(',');
+        
+        if (headerCodes === targetCodes) {
+          usedHeaders.add(header);
+          console.log(`[parseLecturer] ✓ Found inspector header via character code match: "${header}"`);
+          return header;
+        }
+        
+        // Try exact match (might fail due to encoding)
+        if (headerTrimmed === "مراقب") {
+          usedHeaders.add(header);
+          console.log(`[parseLecturer] ✓ Found inspector header via exact match: "${header}"`);
+          return header;
+        }
+        
+        // Try normalized match
+        const headerNormalized = normalizeHeader(header);
+        const patternNormalized = normalizeHeader("مراقب");
+        if (headerNormalized === patternNormalized || 
+            headerNormalized.includes(patternNormalized) || 
+            patternNormalized.includes(headerNormalized)) {
+          usedHeaders.add(header);
+          console.log(`[parseLecturer] ✓ Found inspector header via normalized match: "${header}" (normalized: "${headerNormalized}")`);
+          return header;
+        }
+        
+        // Try includes check (partial match)
+        if (headerTrimmed.includes("مراقب") || "مراقب".includes(headerTrimmed)) {
+          usedHeaders.add(header);
+          console.log(`[parseLecturer] ✓ Found inspector header via includes match: "${header}"`);
+          return header;
+        }
+      }
+      
+      // Then try findArabicHeader for other variations
+      const found = findArabicHeader(
+        ["مراقب", "المراقب", "inspector", "المراقب الأساسي", "inspector 1", "inspector1", "inspector_1", "مراقب 1"],
+        headers,
+        usedHeaders,
+        false
+      );
+      if (found) {
+        console.log(`[parseLecturer] ✓ Found inspector header via findArabicHeader: "${found}"`);
+        return found;
+      }
+      
+      // Final fallback: manual search
+      console.log(`[parseLecturer] Inspector header NOT FOUND via normal methods. Available headers: ${headers.join(", ")}`);
+      console.log(`[parseLecturer] Used headers: ${Array.from(usedHeaders).join(", ")}`);
+      const partialMatch = headers.find(h => {
+        if (usedHeaders.has(h)) return false;
+        const hTrimmed = h.trim();
+        const hCodes = hTrimmed.split('').map(c => c.charCodeAt(0)).join(',');
+        const targetCodes = "مراقب".split('').map(c => c.charCodeAt(0)).join(',');
+        return hCodes === targetCodes || hTrimmed.includes("مراقب") || normalizeHeader(h).includes(normalizeHeader("مراقب"));
+      });
+      if (partialMatch) {
+        usedHeaders.add(partialMatch);
+        console.log(`[parseLecturer] ✓ Found inspector header via final fallback: "${partialMatch}"`);
+        return partialMatch;
+      }
+      
+      console.log(`[parseLecturer] ✗ Inspector header NOT FOUND after all attempts`);
+      return undefined;
+    })(),
+    inspector_role: undefined, // Will be auto-set to the header name during parsing
     invigilator: findArabicHeader(
-      ["invigilator", "المراقب"],
+      ["invigilator", "مراقب الامتحان"], // Removed "المراقب" since it's now used for inspector
       headers,
       usedHeaders,
       false
@@ -396,6 +483,51 @@ export async function parseLecturerSchedule(
       false
     ),
     commenter5_role: undefined, // Will be auto-set to the header name during parsing
+    // Inspector field (only one inspector) - prioritize "مراقب" (without ال)
+    inspector_name: (() => {
+      // First try exact match for "مراقب" - check all headers
+      for (const header of headers) {
+        if (usedHeaders.has(header)) continue;
+        const headerTrimmed = header.trim();
+        // Try exact match
+        if (headerTrimmed === "مراقب") {
+          usedHeaders.add(header);
+          console.log(`[parseLecturer] Found inspector header via exact match: "${header}"`);
+          return header;
+        }
+        // Try normalized match
+        const headerNormalized = normalizeHeader(header);
+        const patternNormalized = normalizeHeader("مراقب");
+        if (headerNormalized === patternNormalized || 
+            headerNormalized.includes(patternNormalized) || 
+            patternNormalized.includes(headerNormalized)) {
+          usedHeaders.add(header);
+          console.log(`[parseLecturer] Found inspector header via normalized match: "${header}" (normalized: "${headerNormalized}")`);
+          return header;
+        }
+      }
+      // Then try findArabicHeader for other variations
+      const found = findArabicHeader(
+        ["مراقب", "المراقب", "inspector", "المراقب الأساسي", "inspector 1", "inspector1", "inspector_1", "مراقب 1"],
+        headers,
+        usedHeaders,
+        false
+      );
+      if (found) {
+        console.log(`[parseLecturer] Found inspector header via findArabicHeader: "${found}"`);
+      } else {
+        console.log(`[parseLecturer] Inspector header NOT FOUND. Available headers: ${headers.join(", ")}`);
+        console.log(`[parseLecturer] Looking for header containing "مراقب"`);
+        const partialMatch = headers.find(h => !usedHeaders.has(h) && (h.includes("مراقب") || normalizeHeader(h).includes(normalizeHeader("مراقب"))));
+        if (partialMatch) {
+          usedHeaders.add(partialMatch);
+          console.log(`[parseLecturer] Found inspector header via partial match: "${partialMatch}"`);
+          return partialMatch;
+        }
+      }
+      return found;
+    })(),
+    inspector_role: undefined, // Will be auto-set to the header name during parsing
   };
   
   // Log detected commenter headers
@@ -405,6 +537,8 @@ export async function parseLecturerSchedule(
   console.log(`  commenter3_name: ${autoDetectedMapping.commenter3_name || "NOT FOUND"}`);
   console.log(`  commenter4_name: ${autoDetectedMapping.commenter4_name || "NOT FOUND"}`);
   console.log(`  commenter5_name: ${autoDetectedMapping.commenter5_name || "NOT FOUND"}`);
+  // Log detected inspector header
+  console.log(`[parseLecturer] Detected inspector header: ${autoDetectedMapping.inspector_name || "NOT FOUND"}`);
 
   if (headerMapping) {
     // Merge provided mapping with auto-detected (provided takes precedence, but fill missing required fields)
@@ -465,6 +599,146 @@ export async function parseLecturerSchedule(
   console.log(`[parseLecturer] Headers found: ${headers.join(", ")}`);
   console.log(`[parseLecturer] Header mapping:`, mapping);
   console.log(`[parseLecturer] Header to field mapping:`, headerToField);
+  console.log(`[parseLecturer] Inspector header detection: mapping.inspector_name = "${mapping.inspector_name || "NOT FOUND"}"`);
+  
+  // CRITICAL: Ensure inspector header is mapped even if auto-detection failed
+  let inspectorHeaderFound = false;
+  if (mapping.inspector_name) {
+    const inspectorHeaderInMapping = Object.entries(headerToField).find(([h, f]) => f === 'inspector_name');
+    console.log(`[parseLecturer] Inspector header "${mapping.inspector_name}" mapped to field: "${headerToField[mapping.inspector_name] || "NOT MAPPED"}"`);
+    console.log(`[parseLecturer] Inspector in headerToField:`, inspectorHeaderInMapping ? `"${inspectorHeaderInMapping[0]}" -> "${inspectorHeaderInMapping[1]}"` : "NOT FOUND");
+    
+    // If inspector header is not in headerToField, manually add it
+    if (!headerToField[mapping.inspector_name]) {
+      console.log(`[parseLecturer] WARNING: Inspector header "${mapping.inspector_name}" not found in headerToField, adding it manually`);
+      // Try to find the actual header in the headers array that matches
+      const actualHeader = headers.find(h => {
+        if (headerToField[h]) return false; // Already mapped to another field
+        const hTrimmed = h.trim();
+        const mappedTrimmed = mapping.inspector_name.trim();
+        const hCodes = hTrimmed.split('').map(c => c.charCodeAt(0)).join(',');
+        const mappedCodes = mappedTrimmed.split('').map(c => c.charCodeAt(0)).join(',');
+        return hCodes === mappedCodes || 
+               hTrimmed === mappedTrimmed || 
+               normalizeHeader(h) === normalizeHeader(mapping.inspector_name) ||
+               h.includes("مراقب") || normalizeHeader(h).includes(normalizeHeader("مراقب"));
+      });
+      if (actualHeader) {
+        headerToField[actualHeader] = "inspector_name";
+        console.log(`[parseLecturer] ✓ Added inspector mapping: "${actualHeader}" -> "inspector_name"`);
+        inspectorHeaderFound = true;
+      } else {
+        // Fallback: use the mapped header name directly
+        headerToField[mapping.inspector_name] = "inspector_name";
+        console.log(`[parseLecturer] ✓ Added inspector mapping using mapped name: "${mapping.inspector_name}" -> "inspector_name"`);
+        inspectorHeaderFound = true;
+      }
+    } else {
+      inspectorHeaderFound = true;
+    }
+  } else {
+    // Inspector header not detected - try to find it manually
+    console.log(`[parseLecturer] Inspector header not detected, trying manual search...`);
+    console.log(`[parseLecturer] Available headers: ${headers.join(", ")}`);
+    console.log(`[parseLecturer] Used headers: ${Array.from(usedHeaders).join(", ")}`);
+    
+    // Try multiple methods to find inspector header
+    let manualInspectorHeader: string | undefined;
+    
+    // Method 1: Direct string match
+    manualInspectorHeader = headers.find(h => {
+      if (usedHeaders.has(h)) return false;
+      const hTrimmed = h.trim();
+      return hTrimmed === "مراقب";
+    });
+    
+    // Method 2: Normalized match
+    if (!manualInspectorHeader) {
+      const patternNormalized = normalizeHeader("مراقب");
+      manualInspectorHeader = headers.find(h => {
+        if (usedHeaders.has(h)) return false;
+        const hNormalized = normalizeHeader(h);
+        return hNormalized === patternNormalized || 
+               hNormalized.includes(patternNormalized) || 
+               patternNormalized.includes(hNormalized);
+      });
+    }
+    
+    // Method 3: Partial string match
+    if (!manualInspectorHeader) {
+      manualInspectorHeader = headers.find(h => {
+        if (usedHeaders.has(h)) return false;
+        return h.includes("مراقب") || normalizeHeader(h).includes(normalizeHeader("مراقب"));
+      });
+    }
+    
+    if (manualInspectorHeader) {
+      console.log(`[parseLecturer] ✓ Found inspector header manually: "${manualInspectorHeader}"`);
+      mapping.inspector_name = manualInspectorHeader;
+      headerToField[manualInspectorHeader] = "inspector_name";
+      usedHeaders.add(manualInspectorHeader);
+      inspectorHeaderFound = true;
+    } else {
+      console.log(`[parseLecturer] ✗ Inspector header NOT FOUND after all attempts`);
+      console.log(`[parseLecturer] All headers:`, headers.map((h, i) => `${i}: "${h}"`));
+      // Last resort: try to find "مراقب" by index (we know it's at index 12 from testing)
+      const headerAtIndex12 = headers[12];
+      if (headerAtIndex12 && !headerToField[headerAtIndex12]) {
+        const header12Codes = headerAtIndex12.trim().split('').map(c => c.charCodeAt(0)).join(',');
+        const targetCodes = "مراقب".split('').map(c => c.charCodeAt(0)).join(',');
+        if (header12Codes === targetCodes) {
+          console.log(`[parseLecturer] ✓ Found inspector at index 12 via character code match: "${headerAtIndex12}"`);
+          mapping.inspector_name = headerAtIndex12;
+          headerToField[headerAtIndex12] = "inspector_name";
+          usedHeaders.add(headerAtIndex12);
+          inspectorHeaderFound = true;
+        }
+      }
+    }
+  }
+  
+  // Final verification and CRITICAL FIX: Ensure inspector is mapped
+  let finalInspectorMapping = Object.entries(headerToField).find(([h, f]) => f === 'inspector_name');
+  if (!finalInspectorMapping) {
+    console.log(`[parseLecturer] ✗✗✗ CRITICAL: Inspector header NOT MAPPED! Attempting emergency fix...`);
+    
+    // Emergency fix: Check header at index 12 (known location from testing)
+    const headerAtIndex12 = headers[12];
+    if (headerAtIndex12) {
+      const header12Codes = headerAtIndex12.trim().split('').map(c => c.charCodeAt(0)).join(',');
+      const targetCodes = "مراقب".split('').map(c => c.charCodeAt(0)).join(',');
+      
+      if (header12Codes === targetCodes) {
+        console.log(`[parseLecturer] ✓✓✓ EMERGENCY FIX: Mapping header at index 12 "${headerAtIndex12}" to inspector_name`);
+        headerToField[headerAtIndex12] = "inspector_name";
+        mapping.inspector_name = headerAtIndex12;
+        usedHeaders.add(headerAtIndex12);
+        finalInspectorMapping = [headerAtIndex12, "inspector_name"];
+      } else {
+        // Try to find any header that matches "مراقب"
+        for (let i = 0; i < headers.length; i++) {
+          const h = headers[i];
+          if (headerToField[h]) continue; // Already mapped
+          const hCodes = h.trim().split('').map(c => c.charCodeAt(0)).join(',');
+          if (hCodes === targetCodes || h.trim().includes("مراقب")) {
+            console.log(`[parseLecturer] ✓✓✓ EMERGENCY FIX: Mapping header at index ${i} "${h}" to inspector_name`);
+            headerToField[h] = "inspector_name";
+            mapping.inspector_name = h;
+            usedHeaders.add(h);
+            finalInspectorMapping = [h, "inspector_name"];
+            break;
+          }
+        }
+      }
+    }
+  }
+  
+  if (finalInspectorMapping) {
+    console.log(`[parseLecturer] ✓✓✓ FINAL: Inspector header "${finalInspectorMapping[0]}" is mapped to "inspector_name"`);
+  } else {
+    console.log(`[parseLecturer] ✗✗✗ FINAL: Inspector header NOT MAPPED after all attempts!`);
+    console.log(`[parseLecturer] All headers with indices:`, headers.map((h, i) => `${i}: "${h}" (mapped to: ${headerToField[h] || "NOT MAPPED"})`));
+  }
   
   // Check required fields
   const requiredFields = ["lecturer_name", "section", "course_code", "course_name", "room", "exam_date", "exam_period", "period_start"];
@@ -535,6 +809,62 @@ export async function parseLecturerSchedule(
 
       const cell = row.getCell(columnIndex);
       let value = cell.value;
+      
+      // Debug logging for inspector field
+      if (fieldName === "inspector_name") {
+        console.log(`[parseLecturer] Row ${rowNum} - Reading inspector from header "${header}", column ${columnIndex}, value: "${value}", type: ${typeof value}`);
+        if (rowNum <= 3) {
+          console.log(`[parseLecturer] Row ${rowNum} - Inspector cell full details:`, {
+            value: value,
+            text: cell.text,
+            type: cell.type,
+            formula: cell.formula,
+            richText: cell.value?.richText
+          });
+        }
+      }
+      
+      // Also check if this header should be inspector_name but wasn't mapped
+      // Check by character codes to handle encoding differences
+      const headerTrimmed = header.trim();
+      const headerCodes = headerTrimmed.split('').map(c => c.charCodeAt(0)).join(',');
+      const targetCodes = "مراقب".split('').map(c => c.charCodeAt(0)).join(',');
+      
+      if ((headerCodes === targetCodes || headerTrimmed.includes("مراقب")) && !fieldName) {
+        console.log(`[parseLecturer] ⚠ WARNING: Found "مراقب" header (codes: ${headerCodes}) but it's not mapped to any field!`);
+        console.log(`[parseLecturer] headerToField for this header: ${headerToField[header]}`);
+        console.log(`[parseLecturer] Mapping inspector_name: ${mapping.inspector_name}`);
+        // Try to map it now
+        if (!headerToField[header]) {
+          headerToField[header] = "inspector_name";
+          console.log(`[parseLecturer] ✓✓✓ CRITICAL FIX: Manually mapped "${header}" to inspector_name during row processing`);
+        }
+        // Also update the fieldName for this iteration
+        const updatedFieldName = headerToField[header];
+        if (updatedFieldName === "inspector_name") {
+          // Re-process this cell with the correct field name
+          const columnIndex = headerToColumnIndex[header];
+          if (columnIndex) {
+            const cell = row.getCell(columnIndex);
+            let value = cell.value;
+            
+            // Handle rich text
+            if (cell.type === ExcelJS.ValueType.RichText && cell.value && typeof cell.value === 'object' && 'richText' in cell.value) {
+              const richText = cell.value as any;
+              if (richText.richText && Array.isArray(richText.richText)) {
+                value = richText.richText.map((rt: any) => rt.text || '').join('');
+              } else if (richText.text) {
+                value = richText.text;
+              }
+            }
+            
+            if (value !== null && value !== undefined && value !== "") {
+              rowData["inspector_name"] = String(value).trim();
+              console.log(`[parseLecturer] ✓✓✓ CRITICAL FIX: Read inspector value: "${rowData["inspector_name"]}"`);
+            }
+          }
+        }
+      }
 
       // Handle rich text (for Arabic text)
       if (cell.type === ExcelJS.ValueType.RichText && cell.value && typeof cell.value === 'object' && 'richText' in cell.value) {
@@ -689,6 +1019,42 @@ export async function parseLecturerSchedule(
       }
     });
 
+    // CRITICAL FIX: If inspector_name is not in rowData, try to read it directly from column 13 (index 12)
+    if (!rowData.inspector_name) {
+      const inspectorHeader = headers[12]; // Known location from testing
+      if (inspectorHeader) {
+        const inspectorHeaderCodes = inspectorHeader.trim().split('').map(c => c.charCodeAt(0)).join(',');
+        const targetCodes = "مراقب".split('').map(c => c.charCodeAt(0)).join(',');
+        
+        if (inspectorHeaderCodes === targetCodes || inspectorHeader.includes("مراقب")) {
+          // Read inspector value directly from column 13
+          const inspectorCell = row.getCell(13);
+          let inspectorValue = inspectorCell.value;
+          
+          // Handle rich text
+          if (inspectorCell.type === ExcelJS.ValueType.RichText && inspectorCell.value && typeof inspectorCell.value === 'object' && 'richText' in inspectorCell.value) {
+            const richText = inspectorCell.value as any;
+            if (richText.richText && Array.isArray(richText.richText)) {
+              inspectorValue = richText.richText.map((rt: any) => rt.text || '').join('');
+            } else if (richText.text) {
+              inspectorValue = richText.text;
+            }
+          }
+          
+          if (inspectorValue !== null && inspectorValue !== undefined && inspectorValue !== "") {
+            rowData.inspector_name = String(inspectorValue).trim();
+            console.log(`[parseLecturer] ✓✓✓ CRITICAL FIX Row ${rowNum}: Read inspector directly from column 13: "${rowData.inspector_name}"`);
+            
+            // Also ensure the header is mapped for future rows
+            if (!headerToField[inspectorHeader]) {
+              headerToField[inspectorHeader] = "inspector_name";
+              console.log(`[parseLecturer] ✓✓✓ Also mapped header "${inspectorHeader}" to inspector_name for future rows`);
+            }
+          }
+        }
+      }
+    }
+
     if (isEmpty) continue;
 
     // Validate row
@@ -724,6 +1090,18 @@ export async function parseLecturerSchedule(
         return roleNames[commenterNum] || `معلق ${commenterNum}`;
       };
       
+      // Auto-set inspector role - derive from the mapped header name
+      const getInspectorRole = (name: string | undefined): string | undefined => {
+        if (!name) return undefined;
+        // Get the mapped header name - it IS the role (e.g., "مراقب" = role)
+        const mappedHeader = mapping.inspector_name;
+        if (mappedHeader) {
+          return mappedHeader; // Use the header name as the role
+        }
+        // Fallback to default if no mapping found
+        return "المراقب";
+      };
+      
       // Set base role - combining with commenter roles will be done in upload route
       const lecturerName = validated.lecturer_name.trim();
       const doctorRole = getDoctorRole();
@@ -755,7 +1133,18 @@ export async function parseLecturerSchedule(
         commenter4Role: getCommenterRole(4, validated.commenter4_name),
         commenter5Name: validated.commenter5_name?.trim(),
         commenter5Role: getCommenterRole(5, validated.commenter5_name),
+        inspectorName: validated.inspector_name?.trim() || undefined,
+        inspectorRole: validated.inspector_name ? getInspectorRole(validated.inspector_name) : undefined,
       });
+      
+      // Debug logging for inspector
+      if (rowNum <= 3) {
+        console.log(`[parseLecturer] Row ${rowNum} - Inspector name from validated: "${validated.inspector_name || "EMPTY"}"`);
+        console.log(`[parseLecturer] Row ${rowNum} - Inspector name after trim: "${validated.inspector_name?.trim() || "EMPTY"}"`);
+        console.log(`[parseLecturer] Row ${rowNum} - Inspector role: "${validated.inspector_name ? getInspectorRole(validated.inspector_name) : "EMPTY"}"`);
+        console.log(`[parseLecturer] Row ${rowNum} - Inspector mapping: "${mapping.inspector_name || "NOT MAPPED"}"`);
+        console.log(`[parseLecturer] Row ${rowNum} - Inspector in headerToField: "${Object.entries(headerToField).find(([h, f]) => f === 'inspector_name')?.[0] || "NOT FOUND"}"`);
+      }
     } catch (err) {
       if (err instanceof z.ZodError) {
         const firstError = err.errors[0];

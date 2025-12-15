@@ -186,6 +186,13 @@ export async function POST(request: NextRequest) {
         false
       ),
       commenter5_role: undefined, // Auto-set to header name during parsing
+      inspector_name: findArabicHeader(
+        ["مراقب", "المراقب", "inspector", "المراقب الأساسي", "inspector 1", "inspector1", "inspector_1", "مراقب 1"],
+        headers,
+        usedHeaders,
+        false
+      ),
+      inspector_role: undefined, // Auto-set to header name during parsing
     };
 
     // Check if all required fields are mapped

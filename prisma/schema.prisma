@@ -89,6 +89,8 @@ model LecturerExam {
   commenter4Role  String?
   commenter5Name  String?
   commenter5Role  String?
+  inspectorName   String?
+  inspectorRole   String?
   
   dataset Dataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
   

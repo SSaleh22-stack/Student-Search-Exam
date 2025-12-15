@@ -155,6 +155,30 @@ export async function GET(request: NextRequest) {
         return false;
       }
       
+      // Check if they're the inspector in this exam
+      if (exam.inspectorName) {
+        const isInspector = exactMatch 
+          ? exactNameMatch(lecturerName, exam.inspectorName)
+          : flexibleNameMatch(lecturerName, exam.inspectorName);
+        
+        if (isInspector) {
+          console.log(`[Schedule] ✓ Match as inspector: "${exam.inspectorName}"`);
+          
+          // If they're an inspector, only show if this is their own separate record
+          // (separate inspector records have lecturerName = inspector name)
+          const isOwnRecord = exactMatch
+            ? exactNameMatch(lecturerName, exam.lecturerName)
+            : flexibleNameMatch(lecturerName, exam.lecturerName);
+          
+          if (isOwnRecord) {
+            // This is their own separate inspector record
+            return true;
+          }
+          // Otherwise, this is someone else's exam where they appear as inspector - don't show it
+          return false;
+        }
+      }
+      
       return false;
     });
     
@@ -233,6 +257,8 @@ export async function GET(request: NextRequest) {
         commenter4Role: exam.commenter4Role,
         commenter5Name: exam.commenter5Name,
         commenter5Role: exam.commenter5Role,
+        inspectorName: exam.inspectorName,
+        inspectorRole: exam.inspectorRole,
       };
     });
 
