@@ -69,25 +69,6 @@ export async function POST(request: NextRequest) {
       
       if (now >= scheduledDateTime) {
         // Scheduled time has already passed, activate immediately
-        // First deactivate other datasets of the same type
-        if (dataset.type) {
-          await prisma.dataset.updateMany({
-            where: {
-              type: dataset.type,
-              id: { not: datasetId },
-            },
-            data: { isActive: false },
-          });
-        } else {
-          await prisma.dataset.updateMany({
-            where: {
-              type: null,
-              id: { not: datasetId },
-            },
-            data: { isActive: false },
-          });
-        }
-        
         await prisma.dataset.update({
           where: { id: datasetId },
           data: { 
@@ -109,34 +90,16 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Activate immediately - clear any scheduled activation
-      // First deactivate other datasets of the same type
-      if (dataset.type) {
-        await prisma.dataset.updateMany({
-          where: {
-            type: dataset.type,
-            id: { not: datasetId },
-          },
-          data: { isActive: false },
-        });
-      } else {
-        await prisma.dataset.updateMany({
-          where: {
-            type: null,
-            id: { not: datasetId },
-          },
-          data: { isActive: false },
-        });
-      }
-      
-        await prisma.dataset.update({
-          where: { id: datasetId },
-          data: { 
-            isActive: !dataset.isActive,
-            activateDate: null,
-            activateTime: null,
-            activateTimezoneOffset: null,
-          },
-    });
+      // Toggle the dataset's active state (allow multiple active datasets)
+      await prisma.dataset.update({
+        where: { id: datasetId },
+        data: { 
+          isActive: !dataset.isActive,
+          activateDate: null,
+          activateTime: null,
+          activateTimezoneOffset: null,
+        },
+      });
     }
 
     // Check for any other scheduled activations that might be due
