@@ -570,6 +570,7 @@ export async function parseLecturerSchedule(
       const actualHeader = headers.find(h => {
         if (headerToField[h]) return false; // Already mapped to another field
         const hTrimmed = h.trim();
+        if (!mapping.inspector_name) return false; // Inspector not mapped
         const mappedTrimmed = mapping.inspector_name.trim();
         const hCodes = hTrimmed.split('').map(c => c.charCodeAt(0)).join(',');
         const mappedCodes = mappedTrimmed.split('').map(c => c.charCodeAt(0)).join(',');
