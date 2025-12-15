@@ -2128,7 +2128,7 @@ No header mapping needed.`);
                           <select
                             value={lecturerMapping["inspector_name"] || ""}
                             onChange={(e) => {
-                              const newMapping = { ...lecturerMapping, inspector_name: e.target.value };
+                              const newMapping: HeaderMapping = { ...lecturerMapping, inspector_name: e.target.value };
                               // Auto-set the role field based on the header name
                               if (e.target.value) {
                                 // The header name itself is the role
