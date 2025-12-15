@@ -7,6 +7,7 @@ import { parseEnrollmentsFromBlocks } from "@/lib/excel/parseEnrollBlocks";
 import { parseEnrollmentsFromSections } from "@/lib/excel/parseEnrollSections";
 import { detectFileStructure } from "@/lib/excel/detectStructure";
 import { parseLecturerSchedule } from "@/lib/excel/parseLecturer";
+import { parseStudentTable } from "@/lib/excel/parseStudentTable";
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,7 @@ export async function POST(request: NextRequest) {
     const examFiles = formData.getAll("examFiles") as File[];
     const enrollFiles = formData.getAll("enrollFiles") as File[];
     const lecturerFiles = formData.getAll("lecturerFiles") as File[];
+    const studentTableFiles = formData.getAll("studentTableFiles") as File[];
     
     let totalSize = 0;
     for (const file of [...examFiles, ...enrollFiles, ...lecturerFiles]) {
@@ -65,6 +67,7 @@ export async function POST(request: NextRequest) {
     }
 
     const uploadType = formData.get("uploadType") as string;
+    const enrollmentFileType = formData.get("enrollmentFileType") as string | null; // "class" or "table"
     const datasetName = formData.get("datasetName") as string;
     const examMappingStr = formData.get("examMapping") as string;
     const enrollMappingStr = formData.get("enrollMapping") as string;
@@ -78,7 +81,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (uploadType === "student") {
-      if (!examFiles || examFiles.length === 0 || !enrollFiles || enrollFiles.length === 0) {
+      const hasEnrollmentFiles = enrollmentFileType === "table"
+        ? studentTableFiles.length > 0
+        : enrollFiles.length > 0;
+      
+      if (!examFiles || examFiles.length === 0 || !hasEnrollmentFiles) {
         return NextResponse.json(
           { error: "Missing required fields. Please provide at least one exam file and one enrollment file." },
           { status: 400 }
@@ -148,30 +155,37 @@ export async function POST(request: NextRequest) {
         ),
         // Process all enrollment files in parallel
         Promise.all(
-          enrollFiles.map(async (enrollFile, i) => {
+          (enrollmentFileType === "table" ? studentTableFiles : enrollFiles).map(async (enrollFile, i) => {
             try {
-              // Detect file structure
-              const enrollStructure = await detectFileStructure(enrollFile);
-              
-              // Use appropriate parser based on detected structure
-              let result;
-              if (enrollStructure.isBlockStructure) {
-                fileType = "block-structured";
-                result = await parseEnrollmentsFromBlocks(enrollFile);
-                console.log(`[Upload] Enrollment file ${i + 1}: Block-structured - ${result.validRows.length} enrollments`);
-              } else if (enrollStructure.isSectionStructure) {
-                fileType = "section-structured";
-                result = await parseEnrollmentsFromSections(enrollFile);
-                console.log(`[Upload] Enrollment file ${i + 1}: Section-structured - ${result.validRows.length} enrollments`);
+              if (enrollmentFileType === "table") {
+                // Use student table parser
+                const result = await parseStudentTable(enrollFile);
+                console.log(`[Upload] Student table file ${i + 1}: ${result.validRows.length} enrollments`);
+                return result;
               } else {
-                // Regular table structure - requires mapping
-                if (!enrollMapping) {
-                  throw new Error(`Header mapping required for table-structured enrollment file ${i + 1}: ${enrollFile.name}`);
+                // Detect file structure for class enrollment files
+                const enrollStructure = await detectFileStructure(enrollFile);
+                
+                // Use appropriate parser based on detected structure
+                let result;
+                if (enrollStructure.isBlockStructure) {
+                  fileType = "block-structured";
+                  result = await parseEnrollmentsFromBlocks(enrollFile);
+                  console.log(`[Upload] Enrollment file ${i + 1}: Block-structured - ${result.validRows.length} enrollments`);
+                } else if (enrollStructure.isSectionStructure) {
+                  fileType = "section-structured";
+                  result = await parseEnrollmentsFromSections(enrollFile);
+                  console.log(`[Upload] Enrollment file ${i + 1}: Section-structured - ${result.validRows.length} enrollments`);
+                } else {
+                  // Regular table structure - requires mapping
+                  if (!enrollMapping) {
+                    throw new Error(`Header mapping required for table-structured enrollment file ${i + 1}: ${enrollFile.name}`);
+                  }
+                  result = await parseEnrollments(enrollFile, enrollMapping);
+                  console.log(`[Upload] Enrollment file ${i + 1}: Table-structured - ${result.validRows.length} enrollments`);
                 }
-                result = await parseEnrollments(enrollFile, enrollMapping);
-                console.log(`[Upload] Enrollment file ${i + 1}: Table-structured - ${result.validRows.length} enrollments`);
+                return result;
               }
-              return result;
             } catch (err) {
               console.error(`[Upload] Error processing enrollment file ${i + 1}:`, err);
               throw err instanceof Error ? err : new Error(`Failed to process enrollment file ${i + 1}: ${enrollFile.name}`);
@@ -387,8 +401,9 @@ export async function POST(request: NextRequest) {
       }
       console.log(`[Upload] Enrollment insertion complete: ${enrollInserted} inserted, ${failed} failed`);
 
-      // Insert exam schedules (after enrollments)
-      console.log(`[Upload] Starting to insert ${examResult.validRows.length} exams into dataset ${dataset.id}`);
+      // Insert exam schedules (after enrollments) - only for "student" type, not "student-table"
+      if (uploadType === "student") {
+        console.log(`[Upload] Starting to insert ${examResult.validRows.length} exams into dataset ${dataset.id}`);
       
       // Validate and prepare exam data in batch
       const validExams = [];
@@ -479,7 +494,11 @@ export async function POST(request: NextRequest) {
           })
         );
       }
-      console.log(`[Upload] Exam insertion complete: ${examInserted} inserted, ${examUpdated} updated, ${failed} failed`);
+        console.log(`[Upload] Exam insertion complete: ${examInserted} inserted, ${examUpdated} updated, ${failed} failed`);
+      } else {
+        // For student-table type, we only insert enrollments (no exams)
+        console.log(`[Upload] Student-table type: Skipping exam insertion (enrollments only)`);
+      }
     }
 
     // Insert lecturer exams (only for lecturer upload type)
@@ -813,7 +832,8 @@ export async function POST(request: NextRequest) {
       fileType,
       filesProcessed: {
         examFiles: uploadType === "student" ? examFiles.length : 0,
-        enrollFiles: uploadType === "student" ? enrollFiles.length : 0,
+        enrollFiles: uploadType === "student" && enrollmentFileType === "class" ? enrollFiles.length : 0,
+        studentTableFiles: uploadType === "student" && enrollmentFileType === "table" ? studentTableFiles.length : 0,
         lecturerFiles: uploadType === "lecturer" ? lecturerFiles.length : 0,
       },
       summary: {

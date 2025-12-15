@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Find exams for enrolled courses across all active student datasets
-    const schedules = await prisma.courseExam.findMany({
+    const exams = await prisma.courseExam.findMany({
       where: {
         datasetId: { in: datasetIds },
         OR: enrollments.map((e) => ({
@@ -97,19 +97,88 @@ export async function GET(request: NextRequest) {
       ],
     });
 
-    // Format response - examDate is already a string (supports Hijri dates)
-    const formattedSchedules = schedules.map((exam) => ({
-      courseName: exam.courseName,
-      courseCode: exam.courseCode,
-      classNo: exam.classNo,
-      examDate: exam.examDate, // Already a string, can be Hijri like "1447-07-01"
-      startTime: exam.startTime,
-      endTime: exam.endTime,
-      place: exam.place,
-      period: exam.period,
-      rows: exam.rows,
-      seats: exam.seats,
-    }));
+    // Create a map of exams by courseCode and classNo for quick lookup
+    const examMap = new Map<string, typeof exams>();
+    exams.forEach((exam) => {
+      const key = `${exam.courseCode}_${exam.classNo}`;
+      if (!examMap.has(key)) {
+        examMap.set(key, []);
+      }
+      examMap.get(key)!.push(exam);
+    });
+
+    // Build schedules: include all enrollments, mark those without exam data
+    const formattedSchedules: Array<{
+      courseName: string;
+      courseCode: string;
+      classNo: string;
+      examDate?: string;
+      startTime?: string;
+      endTime?: string | null;
+      place?: string;
+      period?: string;
+      rows?: string | null;
+      seats?: number | null;
+      hasExamInfo: boolean;
+    }> = [];
+
+    enrollments.forEach((enrollment) => {
+      const key = `${enrollment.courseCode}_${enrollment.classNo}`;
+      const courseExams = examMap.get(key) || [];
+
+      if (courseExams.length === 0) {
+        // No exam data found for this enrollment
+        formattedSchedules.push({
+          courseName: "", // Will be filled from enrollment if available
+          courseCode: enrollment.courseCode,
+          classNo: enrollment.classNo,
+          hasExamInfo: false,
+        });
+      } else {
+        // Add all exams for this course/section
+        courseExams.forEach((exam) => {
+          formattedSchedules.push({
+            courseName: exam.courseName,
+            courseCode: exam.courseCode,
+            classNo: exam.classNo,
+            examDate: exam.examDate,
+            startTime: exam.startTime,
+            endTime: exam.endTime,
+            place: exam.place,
+            period: exam.period,
+            rows: exam.rows,
+            seats: exam.seats,
+            hasExamInfo: true,
+          });
+        });
+      }
+    });
+
+    // Sort: courses with exam info first, then by course code, class number, and exam date
+    // Courses without exam info go to the end
+    formattedSchedules.sort((a, b) => {
+      // First, prioritize courses with exam info
+      if (a.hasExamInfo !== b.hasExamInfo) {
+        return a.hasExamInfo ? -1 : 1; // hasExamInfo: true comes first (returns -1)
+      }
+      
+      // If both have exam info or both don't, sort by course code
+      if (a.courseCode !== b.courseCode) {
+        return a.courseCode.localeCompare(b.courseCode);
+      }
+      
+      // Then by class number
+      if (a.classNo !== b.classNo) {
+        return a.classNo.localeCompare(b.classNo);
+      }
+      
+      // Then by exam date (if both have exam info)
+      if (a.examDate && b.examDate) {
+        return a.examDate.localeCompare(b.examDate);
+      }
+      
+      return 0;
+    });
 
     return NextResponse.json({ schedules: formattedSchedules });
   } catch (error) {

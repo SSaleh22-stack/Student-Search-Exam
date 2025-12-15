@@ -104,10 +104,12 @@ export default function AdminUploadPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [uploadType, setUploadType] = useState<"student" | "lecturer" | null>(null);
+  const [enrollmentFileType, setEnrollmentFileType] = useState<"class" | "table">("class");
   const [datasetName, setDatasetName] = useState("");
   const [examFiles, setExamFiles] = useState<File[]>([]);
   const [enrollFiles, setEnrollFiles] = useState<File[]>([]);
   const [lecturerFiles, setLecturerFiles] = useState<File[]>([]);
+  const [studentTableFiles, setStudentTableFiles] = useState<File[]>([]);
   
   // Header mapping states
   const [examHeaders, setExamHeaders] = useState<string[]>([]);
@@ -1197,7 +1199,7 @@ No header mapping needed.`);
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!uploadType) {
-      setError("يرجى اختيار نوع الرفع (طالب أو محاضر)");
+      setError("يرجى اختيار نوع الرفع (طالب أو محاضر أو جدول الطلاب)");
       return;
     }
     
@@ -1206,7 +1208,11 @@ No header mapping needed.`);
     const MAX_TOTAL_SIZE = 20 * 1024 * 1024; // 20MB total
     
     if (uploadType === "student") {
-      if (examFiles.length === 0 || enrollFiles.length === 0 || !datasetName.trim()) {
+      const hasEnrollmentFiles = enrollmentFileType === "class" 
+        ? enrollFiles.length > 0 
+        : studentTableFiles.length > 0;
+      
+      if (examFiles.length === 0 || !hasEnrollmentFiles || !datasetName.trim()) {
         setError("يرجى توفير ملف امتحان واحد على الأقل وملف تسجيل واحد واسم مجموعة البيانات");
         return;
       }
@@ -1220,7 +1226,8 @@ No header mapping needed.`);
         }
         totalSize += file.size;
       }
-      for (const file of enrollFiles) {
+      const enrollmentFilesToCheck = enrollmentFileType === "class" ? enrollFiles : studentTableFiles;
+      for (const file of enrollmentFilesToCheck) {
         if (file.size > MAX_FILE_SIZE) {
           setError(`الملف "${file.name}" كبير جداً (${(file.size / 1024 / 1024).toFixed(2)} ميجابايت). الحد الأقصى لحجم الملف هو 10 ميجابايت. يرجى تقسيم الملف إلى أجزاء أصغر.`);
           return;
@@ -1252,10 +1259,10 @@ No header mapping needed.`);
       }
     }
 
-    // Check if enrollment files are block-structured or section-structured (only for student upload)
+    // Check if enrollment files are block-structured or section-structured (only for student upload with class type)
     let isBlockStructured = false;
     let isSectionStructured = false;
-    if (uploadType === "student" && enrollFiles.length > 0) {
+    if (uploadType === "student" && enrollmentFileType === "class" && enrollFiles.length > 0) {
       try {
         const checkFormData = new FormData();
         checkFormData.append("file", enrollFiles[0]); // Check first file
@@ -1277,14 +1284,23 @@ No header mapping needed.`);
     // Validate mappings based on upload type
     if (uploadType === "student") {
       const examRequired = ["course_code", "course_name", "class_no", "exam_date", "start_time", "place", "period"];
-      const enrollRequired = (isBlockStructured || isSectionStructured) ? [] : ["student_id", "course_code", "class_no"];
-      
       const missingExam = examRequired.filter(f => !examMapping[f]);
-      const missingEnroll = enrollRequired.filter(f => !enrollMapping[f]);
       
-      if (missingExam.length > 0 || missingEnroll.length > 0) {
-        setError(`يرجى تعيين جميع الحقول المطلوبة. الحقول المفقودة: ${[...missingExam, ...missingEnroll].join(", ")}`);
-        return;
+      // For class enrollment type, check mapping requirements
+      if (enrollmentFileType === "class") {
+        const enrollRequired = (isBlockStructured || isSectionStructured) ? [] : ["student_id", "course_code", "class_no"];
+        const missingEnroll = enrollRequired.filter(f => !enrollMapping[f]);
+        
+        if (missingExam.length > 0 || missingEnroll.length > 0) {
+          setError(`يرجى تعيين جميع الحقول المطلوبة. الحقول المفقودة: ${[...missingExam, ...missingEnroll].join(", ")}`);
+          return;
+        }
+      } else {
+        // For table enrollment type, no mapping needed
+        if (missingExam.length > 0) {
+          setError(`يرجى تعيين جميع الحقول المطلوبة. الحقول المفقودة: ${missingExam.join(", ")}`);
+          return;
+        }
       }
     } else if (uploadType === "lecturer") {
       const lecturerRequired = ["lecturer_name", "section", "course_code", "course_name", "room", "exam_date", "exam_period", "period_start"];
@@ -1312,15 +1328,26 @@ No header mapping needed.`);
         examFiles.forEach((file) => {
           formData.append("examFiles", file);
         });
-        // Append all enrollment files
-        enrollFiles.forEach((file) => {
-          formData.append("enrollFiles", file);
-        });
-        formData.append("examMapping", JSON.stringify(examMapping));
-        // Only send enrollment mapping if not block-structured
-        if (!isBlockStructured && !isSectionStructured) {
-          formData.append("enrollMapping", JSON.stringify(enrollMapping));
+        
+        // Append enrollment files based on type
+        if (enrollmentFileType === "class") {
+          enrollFiles.forEach((file) => {
+            formData.append("enrollFiles", file);
+          });
+          formData.append("examMapping", JSON.stringify(examMapping));
+          // Only send enrollment mapping if not block-structured
+          if (!isBlockStructured && !isSectionStructured) {
+            formData.append("enrollMapping", JSON.stringify(enrollMapping));
+          }
+        } else {
+          // Table type
+          studentTableFiles.forEach((file) => {
+            formData.append("studentTableFiles", file);
+          });
+          formData.append("examMapping", JSON.stringify(examMapping));
         }
+        
+        formData.append("enrollmentFileType", enrollmentFileType);
       } else if (uploadType === "lecturer") {
         // Append all lecturer files
         lecturerFiles.forEach((file) => {
@@ -1729,9 +1756,11 @@ No header mapping needed.`);
                     type="button"
                     onClick={() => {
                       setUploadType("student");
+                      setEnrollmentFileType("class");
                       setExamFiles([]);
                       setEnrollFiles([]);
                       setLecturerFiles([]);
+                      setStudentTableFiles([]);
                       setExamHeaders([]);
                       setEnrollHeaders([]);
                       setLecturerHeaders([]);
@@ -1761,6 +1790,7 @@ No header mapping needed.`);
                       setExamFiles([]);
                       setEnrollFiles([]);
                       setLecturerFiles([]);
+                      setStudentTableFiles([]);
                       setExamHeaders([]);
                       setEnrollHeaders([]);
                       setLecturerHeaders([]);
@@ -1833,31 +1863,134 @@ No header mapping needed.`);
                         )}
                       </div>
 
+                      {/* Enrollment File Type Selection */}
                       <div>
-                        <label htmlFor="enrollFile" className="block text-sm font-medium text-gray-700 mb-2">
-                          ملفات تسجيلات الطلاب (Excel) - يُسمح بملفات متعددة
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          نوع ملف التسجيلات
                         </label>
-                        <input
-                          id="enrollFile"
-                          type="file"
-                          accept=".xlsx,.xls"
-                          multiple
-                          onChange={handleEnrollFileChange}
-                          required
-                          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          disabled={uploading || readingHeaders}
-                        />
-                        {enrollFiles.length > 0 && (
-                          <div className="mt-2 text-sm text-gray-600">
-                            <span className="font-medium">تم اختيار {enrollFiles.length} ملف:</span>
-                            <ul className="list-disc list-inside mt-1">
-                              {enrollFiles.map((file, idx) => (
-                                <li key={idx}>{file.name}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
+                        <div className="grid grid-cols-2 gap-4">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEnrollmentFileType("class");
+                              setEnrollFiles([]);
+                              setStudentTableFiles([]);
+                              setEnrollHeaders([]);
+                              setEnrollMapping({});
+                            }}
+                            className={`px-4 py-3 border-2 rounded-md transition-all ${
+                              enrollmentFileType === "class"
+                                ? "border-blue-500 bg-blue-50 text-blue-700"
+                                : "border-gray-300 bg-white text-gray-700 hover:border-blue-300"
+                            }`}
+                            disabled={uploading || readingHeaders}
+                          >
+                            <div className="flex items-center gap-2 justify-center">
+                              <FileSpreadsheet className="w-5 h-5" />
+                              <span className="font-medium">شعبة</span>
+                            </div>
+                            <p className="text-xs mt-1 text-gray-600">ملفات التسجيلات العادية</p>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEnrollmentFileType("table");
+                              setEnrollFiles([]);
+                              setStudentTableFiles([]);
+                              setEnrollHeaders([]);
+                              setEnrollMapping({});
+                            }}
+                            className={`px-4 py-3 border-2 rounded-md transition-all ${
+                              enrollmentFileType === "table"
+                                ? "border-green-500 bg-green-50 text-green-700"
+                                : "border-gray-300 bg-white text-gray-700 hover:border-green-300"
+                            }`}
+                            disabled={uploading || readingHeaders}
+                          >
+                            <div className="flex items-center gap-2 justify-center">
+                              <FileSpreadsheet className="w-5 h-5" />
+                              <span className="font-medium">جدول</span>
+                            </div>
+                            <p className="text-xs mt-1 text-gray-600">ملفات جدول الطلاب</p>
+                          </button>
+                        </div>
                       </div>
+
+                      {/* Class Enrollment Files */}
+                      {enrollmentFileType === "class" && (
+                        <div>
+                          <label htmlFor="enrollFile" className="block text-sm font-medium text-gray-700 mb-2">
+                            ملفات تسجيلات الطلاب (Excel) - يُسمح بملفات متعددة
+                          </label>
+                          <input
+                            id="enrollFile"
+                            type="file"
+                            accept=".xlsx,.xls"
+                            multiple
+                            onChange={handleEnrollFileChange}
+                            required
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            disabled={uploading || readingHeaders}
+                          />
+                          {enrollFiles.length > 0 && (
+                            <div className="mt-2 text-sm text-gray-600">
+                              <span className="font-medium">تم اختيار {enrollFiles.length} ملف:</span>
+                              <ul className="list-disc list-inside mt-1">
+                                {enrollFiles.map((file, idx) => (
+                                  <li key={idx}>{file.name}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Table Enrollment Files */}
+                      {enrollmentFileType === "table" && (
+                        <div>
+                          <label htmlFor="studentTableFile" className="block text-sm font-medium text-gray-700 mb-2">
+                            ملفات تسجيلات الطلاب (Excel) - يُسمح بملفات متعددة
+                          </label>
+                          <input
+                            id="studentTableFile"
+                            type="file"
+                            accept=".xlsx,.xls"
+                            multiple
+                            onChange={(e) => {
+                              if (e.target.files) {
+                                setStudentTableFiles(Array.from(e.target.files));
+                              }
+                            }}
+                            required
+                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            disabled={uploading || readingHeaders}
+                          />
+                          {studentTableFiles.length > 0 && (
+                            <div className="mt-2 text-sm text-gray-600">
+                              <span className="font-medium">تم اختيار {studentTableFiles.length} ملف:</span>
+                              <ul className="list-disc list-inside mt-1">
+                                {studentTableFiles.map((file, idx) => (
+                                  <li key={idx}>{file.name}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          <div className="mt-3 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-md">
+                            <div className="flex items-start gap-2">
+                              <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                              <div className="text-sm">
+                                <p className="font-medium mb-1">ملاحظة:</p>
+                                <p>سيتم استخراج تلقائياً:</p>
+                                <ul className="list-disc list-inside mt-1 space-y-1">
+                                  <li>رقم الطالب (Student ID)</li>
+                                  <li>رمز المقرر (Course Code)</li>
+                                  <li>رقم الشعبة (Section Number)</li>
+                                </ul>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Auto-detection success message for exam file */}
                       {examAutoDetectSuccess && examFiles.length > 0 && (

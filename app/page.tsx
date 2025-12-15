@@ -10,13 +10,14 @@ interface ExamSchedule {
   courseName: string;
   courseCode: string;
   classNo: string;
-  examDate: string;
-  startTime: string;
-  endTime: string;
-  place: string;
-  period: string;
-  rows?: string; // Row range like "1-8", "1-9", "4-6"
-  seats?: number;
+  examDate?: string;
+  startTime?: string;
+  endTime?: string | null;
+  place?: string;
+  period?: string;
+  rows?: string | null; // Row range like "1-8", "1-9", "4-6"
+  seats?: number | null;
+  hasExamInfo: boolean;
 }
 
 export default function HomePage() {
@@ -188,6 +189,11 @@ export default function HomePage() {
       // Table Body
       const tbody = document.createElement("tbody");
       schedules.forEach((schedule, index) => {
+        // Skip courses without exam info in PDF export
+        if (!schedule.hasExamInfo) {
+          return;
+        }
+        
         const row = document.createElement("tr");
         if (index % 2 === 0) {
           row.style.backgroundColor = "#f9fafb";
@@ -195,13 +201,13 @@ export default function HomePage() {
         row.style.borderBottom = "1px solid #e5e7eb";
         
         const cells = [
-          schedule.courseName,
+          schedule.courseName || "",
           schedule.courseCode,
           schedule.classNo,
-          formatDate(schedule.examDate),
-          `${schedule.startTime}${schedule.endTime ? ` - ${schedule.endTime}` : ""}`,
-          schedule.place,
-          schedule.period
+          schedule.examDate ? formatDate(schedule.examDate) : "",
+          schedule.startTime ? `${schedule.startTime}${schedule.endTime ? ` - ${schedule.endTime}` : ""}` : "",
+          schedule.place || "",
+          schedule.period || ""
         ];
         
         cells.forEach((cellText, cellIndex) => {
@@ -221,6 +227,7 @@ export default function HomePage() {
       tableContainer.appendChild(table);
       
       // Summary
+      const examCount = schedules.filter(s => s.hasExamInfo).length;
       const summary = document.createElement("div");
       summary.style.marginTop = "20px";
       summary.style.padding = "15px";
@@ -229,7 +236,7 @@ export default function HomePage() {
       summary.style.textAlign = "right";
       summary.innerHTML = `
         <p style="margin: 0; font-size: 18px; font-weight: bold; color: #1f2937;">
-          إجمالي عدد الامتحانات: ${schedules.length}
+          إجمالي عدد الامتحانات: ${examCount}
         </p>
       `;
       tableContainer.appendChild(summary);
@@ -377,6 +384,11 @@ export default function HomePage() {
       // Table Body
       const tbody = document.createElement("tbody");
       schedules.forEach((schedule, index) => {
+        // Skip courses without exam info in JPG export
+        if (!schedule.hasExamInfo) {
+          return;
+        }
+        
         const row = document.createElement("tr");
         if (index % 2 === 0) {
           row.style.backgroundColor = "#f9fafb";
@@ -384,13 +396,13 @@ export default function HomePage() {
         row.style.borderBottom = "1px solid #e5e7eb";
         
         const cells = [
-          schedule.courseName,
+          schedule.courseName || "",
           schedule.courseCode,
           schedule.classNo,
-          formatDate(schedule.examDate),
-          `${schedule.startTime}${schedule.endTime ? ` - ${schedule.endTime}` : ""}`,
-          schedule.place,
-          schedule.period
+          schedule.examDate ? formatDate(schedule.examDate) : "",
+          schedule.startTime ? `${schedule.startTime}${schedule.endTime ? ` - ${schedule.endTime}` : ""}` : "",
+          schedule.place || "",
+          schedule.period || ""
         ];
         
         cells.forEach((cellText, cellIndex) => {
@@ -410,6 +422,7 @@ export default function HomePage() {
       tableContainer.appendChild(table);
       
       // Summary
+      const examCount = schedules.filter(s => s.hasExamInfo).length;
       const summary = document.createElement("div");
       summary.style.marginTop = "20px";
       summary.style.padding = "15px";
@@ -418,7 +431,7 @@ export default function HomePage() {
       summary.style.textAlign = "right";
       summary.innerHTML = `
         <p style="margin: 0; font-size: 18px; font-weight: bold; color: #1f2937;">
-          إجمالي عدد الامتحانات: ${schedules.length}
+          إجمالي عدد الامتحانات: ${examCount}
         </p>
       `;
       tableContainer.appendChild(summary);
@@ -543,6 +556,11 @@ export default function HomePage() {
     const icsContent = schedules
       .map((schedule, index) => {
         try {
+          // Skip courses without exam info
+          if (!schedule.hasExamInfo || !schedule.examDate) {
+            return "";
+          }
+          
           // Parse and convert date
           const examDate = parseDate(schedule.examDate);
           if (!examDate || isNaN(examDate.getTime())) {
@@ -841,49 +859,69 @@ END:VCALENDAR`;
             {schedules.map((schedule, index) => (
               <div
                 key={index}
-                className="bg-white rounded-lg shadow-md p-4 sm:p-6 hover:shadow-lg transition-all duration-200 animate-in fade-in slide-in-from-bottom-4"
+                className={`bg-white rounded-lg shadow-md p-4 sm:p-6 hover:shadow-lg transition-all duration-200 animate-in fade-in slide-in-from-bottom-4 ${
+                  !schedule.hasExamInfo ? "border-2 border-amber-200 bg-amber-50" : ""
+                }`}
                 style={{ animationDelay: `${index * 50}ms` }}
               >
                 <div className="flex flex-col sm:flex-row items-start justify-between mb-4 gap-3">
                   <div className="flex-1">
                     <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1">
-                      {schedule.courseName}
+                      {schedule.courseName || "اسم المقرر غير متوفر"}
                     </h3>
                     <p className="text-sm sm:text-base font-medium text-gray-700">
                       <span className="text-xs sm:text-sm text-gray-500">رمز المقرر: </span>
                       {schedule.courseCode} • <span className="text-base sm:text-lg font-semibold">الشعبة {schedule.classNo}</span>
                     </p>
                   </div>
-                  <span className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-800 text-xs sm:text-sm font-medium rounded-full whitespace-nowrap">
-                    {schedule.period}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base">
-                    <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
-                    <span className="text-xs sm:text-sm text-gray-500">التاريخ:</span>
-                    <span className="font-medium break-words">{formatDate(schedule.examDate)}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base">
-                    <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
-                    <span className="text-xs sm:text-sm text-gray-500">الوقت:</span>
-                    <span className="font-medium">
-                      {schedule.startTime} - {schedule.endTime}
+                  {schedule.hasExamInfo && schedule.period && (
+                    <span className="px-2 sm:px-3 py-1 bg-blue-100 text-blue-800 text-xs sm:text-sm font-medium rounded-full whitespace-nowrap">
+                      {schedule.period}
                     </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base sm:col-span-2">
-                    <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
-                    <span className="text-xs sm:text-sm text-gray-500">المكان:</span>
-                    <span className="font-medium break-words">{schedule.place}</span>
-                  </div>
-                  {schedule.rows && (
-                    <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base sm:col-span-2">
-                      <Grid3x3 className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
-                      <span className="font-medium">الأعمدة: {schedule.rows}</span>
-                    </div>
+                  )}
+                  {!schedule.hasExamInfo && (
+                    <span className="px-2 sm:px-3 py-1 bg-amber-100 text-amber-800 text-xs sm:text-sm font-medium rounded-full whitespace-nowrap">
+                      لا توجد معلومات
+                    </span>
                   )}
                 </div>
+
+                {schedule.hasExamInfo ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base">
+                      <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+                      <span className="text-xs sm:text-sm text-gray-500">التاريخ:</span>
+                      <span className="font-medium break-words">{formatDate(schedule.examDate || "")}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base">
+                      <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+                      <span className="text-xs sm:text-sm text-gray-500">الوقت:</span>
+                      <span className="font-medium">
+                        {schedule.startTime || ""} {schedule.endTime ? `- ${schedule.endTime}` : ""}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base sm:col-span-2">
+                      <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+                      <span className="text-xs sm:text-sm text-gray-500">المكان:</span>
+                      <span className="font-medium break-words">{schedule.place || ""}</span>
+                    </div>
+                    {schedule.rows && (
+                      <div className="flex items-center gap-2 text-gray-700 text-sm sm:text-base sm:col-span-2">
+                        <Grid3x3 className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
+                        <span className="font-medium">الأعمدة: {schedule.rows}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-amber-100 border border-amber-300 rounded-lg p-4 text-center">
+                    <p className="text-amber-800 font-medium text-sm sm:text-base">
+                      لا توجد معلومات عن امتحان هذا المقرر حالياً
+                    </p>
+                    <p className="text-amber-700 text-xs sm:text-sm mt-2">
+                      رمز المقرر: {schedule.courseCode} • الشعبة: {schedule.classNo}
+                    </p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
