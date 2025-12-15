@@ -97,9 +97,21 @@ export async function GET(request: NextRequest) {
       ],
     });
 
-    // Create a map of exams by courseCode and classNo for quick lookup
-    const examMap = new Map<string, typeof exams>();
+    // Deduplicate exams based on unique identifiers
+    // Use courseCode + classNo + examDate + startTime + place as unique key
+    const uniqueExamMap = new Map<string, typeof exams[0]>();
     exams.forEach((exam) => {
+      const uniqueKey = `${exam.courseCode}_${exam.classNo}_${exam.examDate || ''}_${exam.startTime || ''}_${exam.place || ''}`;
+      if (!uniqueExamMap.has(uniqueKey)) {
+        uniqueExamMap.set(uniqueKey, exam);
+      }
+    });
+    
+    const uniqueExams = Array.from(uniqueExamMap.values());
+
+    // Create a map of exams by courseCode and classNo for quick lookup
+    const examMap = new Map<string, typeof uniqueExams>();
+    uniqueExams.forEach((exam) => {
       const key = `${exam.courseCode}_${exam.classNo}`;
       if (!examMap.has(key)) {
         examMap.set(key, []);

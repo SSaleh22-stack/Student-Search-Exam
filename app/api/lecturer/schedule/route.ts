@@ -104,10 +104,22 @@ export async function GET(request: NextRequest) {
       },
     });
     
-    console.log(`[Schedule] Search: "${lecturerName}" (exactMatch: ${exactMatch}), Total exams: ${allExams.length}`);
+    // Deduplicate exams based on unique identifiers
+    // Use courseCode + section + examDate + periodStart + room + lecturerName as unique key
+    const uniqueExamMap = new Map<string, typeof allExams[0]>();
+    allExams.forEach((exam) => {
+      const uniqueKey = `${exam.courseCode}_${exam.section}_${exam.examDate || ''}_${exam.periodStart || ''}_${exam.room || ''}_${exam.lecturerName || ''}`;
+      if (!uniqueExamMap.has(uniqueKey)) {
+        uniqueExamMap.set(uniqueKey, exam);
+      }
+    });
+    
+    const uniqueExams = Array.from(uniqueExamMap.values());
+    
+    console.log(`[Schedule] Search: "${lecturerName}" (exactMatch: ${exactMatch}), Total exams: ${allExams.length}, Unique exams: ${uniqueExams.length}`);
     
     // Filter exams that match the search
-    const matchingExams = allExams.filter(exam => {
+    const matchingExams = uniqueExams.filter(exam => {
       // Check if they're the lecturer (their own record)
       const isLecturer = exactMatch 
         ? exactNameMatch(lecturerName, exam.lecturerName)
