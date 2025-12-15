@@ -82,14 +82,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ schedules: [] });
     }
 
-    // Find exams for enrolled courses across all active student datasets
+    // Find exams for enrolled sections across all active student datasets
+    // Match using section number (classNo) only, not course code
+    const uniqueClassNos = [...new Set(enrollments.map((e) => e.classNo))];
     const exams = await prisma.courseExam.findMany({
       where: {
         datasetId: { in: datasetIds },
-        OR: enrollments.map((e) => ({
-          courseCode: e.courseCode,
-          classNo: e.classNo,
-        })),
+        classNo: { in: uniqueClassNos },
       },
       orderBy: [
         { examDate: "asc" },
@@ -109,10 +108,11 @@ export async function GET(request: NextRequest) {
     
     const uniqueExams = Array.from(uniqueExamMap.values());
 
-    // Create a map of exams by courseCode and classNo for quick lookup
+    // Create a map of exams by classNo (section number) for quick lookup
+    // Match using section number only, not course code
     const examMap = new Map<string, typeof uniqueExams>();
     uniqueExams.forEach((exam) => {
-      const key = `${exam.courseCode}_${exam.classNo}`;
+      const key = exam.classNo; // Use only section number as key
       if (!examMap.has(key)) {
         examMap.set(key, []);
       }
@@ -135,7 +135,8 @@ export async function GET(request: NextRequest) {
     }> = [];
 
     enrollments.forEach((enrollment) => {
-      const key = `${enrollment.courseCode}_${enrollment.classNo}`;
+      // Match using section number (classNo) only, not course code
+      const key = enrollment.classNo;
       const courseExams = examMap.get(key) || [];
 
       if (courseExams.length === 0) {
@@ -166,9 +167,30 @@ export async function GET(request: NextRequest) {
       }
     });
 
+    // Remove duplicates from formatted schedules
+    // Use a combination of all exam fields as unique key
+    const uniqueSchedulesMap = new Map<string, typeof formattedSchedules[0]>();
+    formattedSchedules.forEach((schedule) => {
+      if (schedule.hasExamInfo) {
+        // For exams, use exam details as unique key
+        const uniqueKey = `${schedule.courseCode}_${schedule.classNo}_${schedule.examDate || ''}_${schedule.startTime || ''}_${schedule.place || ''}_${schedule.period || ''}`;
+        if (!uniqueSchedulesMap.has(uniqueKey)) {
+          uniqueSchedulesMap.set(uniqueKey, schedule);
+        }
+      } else {
+        // For enrollments without exam info, use course code + class number
+        const uniqueKey = `${schedule.courseCode}_${schedule.classNo}_no_exam`;
+        if (!uniqueSchedulesMap.has(uniqueKey)) {
+          uniqueSchedulesMap.set(uniqueKey, schedule);
+        }
+      }
+    });
+    
+    const uniqueSchedules = Array.from(uniqueSchedulesMap.values());
+
     // Sort: courses with exam info first, then by course code, class number, and exam date
     // Courses without exam info go to the end
-    formattedSchedules.sort((a, b) => {
+    uniqueSchedules.sort((a, b) => {
       // First, prioritize courses with exam info
       if (a.hasExamInfo !== b.hasExamInfo) {
         return a.hasExamInfo ? -1 : 1; // hasExamInfo: true comes first (returns -1)
@@ -192,7 +214,7 @@ export async function GET(request: NextRequest) {
       return 0;
     });
 
-    return NextResponse.json({ schedules: formattedSchedules });
+    return NextResponse.json({ schedules: uniqueSchedules });
   } catch (error) {
     console.error("Schedule lookup error:", error);
     return NextResponse.json(
