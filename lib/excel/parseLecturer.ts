@@ -770,12 +770,15 @@ export async function parseLecturerSchedule(
       if (fieldName === "inspector_name") {
         console.log(`[parseLecturer] Row ${rowNum} - Reading inspector from header "${header}", column ${columnIndex}, value: "${value}", type: ${typeof value}`);
         if (rowNum <= 3) {
+          const richTextValue = cell.value && typeof cell.value === 'object' && 'richText' in cell.value 
+            ? (cell.value as any).richText 
+            : undefined;
           console.log(`[parseLecturer] Row ${rowNum} - Inspector cell full details:`, {
             value: value,
             text: cell.text,
             type: cell.type,
             formula: cell.formula,
-            richText: cell.value?.richText
+            richText: richTextValue
           });
         }
       }
