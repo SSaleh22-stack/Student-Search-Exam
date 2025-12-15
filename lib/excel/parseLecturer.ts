@@ -483,51 +483,6 @@ export async function parseLecturerSchedule(
       false
     ),
     commenter5_role: undefined, // Will be auto-set to the header name during parsing
-    // Inspector field (only one inspector) - prioritize "مراقب" (without ال)
-    inspector_name: (() => {
-      // First try exact match for "مراقب" - check all headers
-      for (const header of headers) {
-        if (usedHeaders.has(header)) continue;
-        const headerTrimmed = header.trim();
-        // Try exact match
-        if (headerTrimmed === "مراقب") {
-          usedHeaders.add(header);
-          console.log(`[parseLecturer] Found inspector header via exact match: "${header}"`);
-          return header;
-        }
-        // Try normalized match
-        const headerNormalized = normalizeHeader(header);
-        const patternNormalized = normalizeHeader("مراقب");
-        if (headerNormalized === patternNormalized || 
-            headerNormalized.includes(patternNormalized) || 
-            patternNormalized.includes(headerNormalized)) {
-          usedHeaders.add(header);
-          console.log(`[parseLecturer] Found inspector header via normalized match: "${header}" (normalized: "${headerNormalized}")`);
-          return header;
-        }
-      }
-      // Then try findArabicHeader for other variations
-      const found = findArabicHeader(
-        ["مراقب", "المراقب", "inspector", "المراقب الأساسي", "inspector 1", "inspector1", "inspector_1", "مراقب 1"],
-        headers,
-        usedHeaders,
-        false
-      );
-      if (found) {
-        console.log(`[parseLecturer] Found inspector header via findArabicHeader: "${found}"`);
-      } else {
-        console.log(`[parseLecturer] Inspector header NOT FOUND. Available headers: ${headers.join(", ")}`);
-        console.log(`[parseLecturer] Looking for header containing "مراقب"`);
-        const partialMatch = headers.find(h => !usedHeaders.has(h) && (h.includes("مراقب") || normalizeHeader(h).includes(normalizeHeader("مراقب"))));
-        if (partialMatch) {
-          usedHeaders.add(partialMatch);
-          console.log(`[parseLecturer] Found inspector header via partial match: "${partialMatch}"`);
-          return partialMatch;
-        }
-      }
-      return found;
-    })(),
-    inspector_role: undefined, // Will be auto-set to the header name during parsing
   };
   
   // Log detected commenter headers
