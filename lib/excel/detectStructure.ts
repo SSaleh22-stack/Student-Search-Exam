@@ -87,9 +87,16 @@ export async function detectFileStructure(
   // Look for patterns: "المقرر:" followed by course code, "الشعبة:" followed by section number
   let courseCount = 0;
   let sectionCount = 0;
-  const coursePattern = /^[A-Z]{2,}\s*\d{2,}/i;
+  // Support both letters-first (CS 181) and numbers-first (281 QURN) course codes
+  const coursePatternLettersFirst = /^[A-Z]{2,}[\s\.]*\d{2,}/i;
+  const coursePatternNumbersFirst = /^\d{2,}[\s\.]*[A-Z]{2,}/i;
   const sectionHeaderPattern = /الشعبة|شعبة/i;
   const courseHeaderPattern = /المقرر/i;
+  
+  // Helper function to check if a value matches a course code pattern
+  const isCourseCode = (value: string): boolean => {
+    return coursePatternLettersFirst.test(value) || coursePatternNumbersFirst.test(value);
+  };
   
   // Check first 200 rows for better detection
   for (let rowNum = 1; rowNum <= Math.min(200, worksheet.rowCount); rowNum++) {
@@ -105,7 +112,7 @@ export async function detectFileStructure(
         for (let nextCol = col + 1; nextCol <= Math.min(col + 5, worksheet.columnCount); nextCol++) {
           const nextCell = row.getCell(nextCol);
           const nextValue = String(nextCell.value || "").trim();
-          if (coursePattern.test(nextValue)) {
+          if (isCourseCode(nextValue)) {
             courseCount++;
             break;
           }

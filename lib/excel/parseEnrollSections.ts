@@ -47,10 +47,17 @@ export async function parseEnrollmentsFromSections(
   let studentHeaderRow = 0;
 
   // Patterns
-  const coursePattern = /^[A-Z]{2,}\s*\d{2,}/i;
+  // Support both letters-first (CS 181) and numbers-first (281 QURN) course codes
+  const coursePatternLettersFirst = /^[A-Z]{2,}[\s\.]*\d{2,}/i;
+  const coursePatternNumbersFirst = /^\d{2,}[\s\.]*[A-Z]{2,}/i;
   const sectionHeaderPattern = /الشعبة|شعبة/i;
   const studentIdHeaderPattern = /رقم\s*الطالب|رقم الطالب/i;
   const studentIdPattern = /^\d{9}$/;
+  
+  // Helper function to check if a value matches a course code pattern
+  const isCourseCode = (value: string): boolean => {
+    return coursePatternLettersFirst.test(value) || coursePatternNumbersFirst.test(value);
+  };
 
   for (let rowNum = 1; rowNum <= worksheet.rowCount; rowNum++) {
     const row = worksheet.getRow(rowNum);
@@ -68,8 +75,9 @@ export async function parseEnrollmentsFromSections(
         for (let nextCol = col + 1; nextCol <= Math.min(col + 5, worksheet.columnCount); nextCol++) {
           const nextCell = row.getCell(nextCol);
           const nextValue = String(nextCell.value || "").trim();
-          if (coursePattern.test(nextValue)) {
-            currentCourse = nextValue.replace(/\s+/g, " ").toUpperCase();
+          if (isCourseCode(nextValue)) {
+            // Extract and normalize course code (remove spaces, convert to uppercase)
+            currentCourse = nextValue.replace(/[\s\.]+/g, "").toUpperCase();
             foundCourse = true;
             inStudentList = false;
             console.log(`Row ${rowNum}: Found course: ${currentCourse}`);

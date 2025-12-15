@@ -54,7 +54,14 @@ export async function parseStudentTable(
 
   // Patterns
   const studentIdPattern = /^[0-9]{9}$/;
-  const courseCodePattern = /^[A-Z]{2,}\s*\d{2,}/i;
+  // Support both letters-first (CS 181) and numbers-first (281 QURN) course codes
+  const courseCodePatternLettersFirst = /^[A-Z]{2,}[\s\.]*\d{2,}/i;
+  const courseCodePatternNumbersFirst = /^\d{2,}[\s\.]*[A-Z]{2,}/i;
+  
+  // Helper function to check if a value matches a course code pattern
+  const isCourseCode = (value: string): boolean => {
+    return courseCodePatternLettersFirst.test(value) || courseCodePatternNumbersFirst.test(value);
+  };
 
   let currentStudentId = "";
   let courseHeaderRow = 0;
@@ -165,8 +172,9 @@ export async function parseStudentTable(
       for (let col = 2; col <= 5; col++) {
         const cell = row.getCell(col);
         const value = cell.value?.toString().trim() || "";
-        if (courseCodePattern.test(value)) {
-          courseCode = value;
+        if (isCourseCode(value)) {
+          // Normalize course code (remove spaces, convert to uppercase)
+          courseCode = value.replace(/[\s\.]+/g, "").toUpperCase();
           break;
         }
       }
